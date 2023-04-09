@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'Vision'
+package_name = 'vision'
 
 setup(
     name=package_name,
@@ -15,11 +15,12 @@ setup(
     zip_safe=True,
     maintainer='kuba',
     maintainer_email='ntfr123@gmail.com',
-    description='TODO: Package description',
+    description='Vision related nodes in DroneKNR project',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'receive_gz_camera = vision.receiveGzCamera:main'
         ],
     },
 )
