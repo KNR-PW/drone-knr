@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'receive_gz_camera = vision.receiveGzCamera:main'
+            'receive_camera = vision.receiveCamera:main'
         ],
     },
 )
