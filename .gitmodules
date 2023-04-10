@@ -1,0 +1,3 @@
+[submodule "src/simulation/drone_sim"]
+	path = src/simulation/drone_sim
+	url = https://github.com/qbaaa-0/drone_sim
