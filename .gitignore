@@ -31,7 +31,6 @@ devel_isolated/
 *.wikidoc
 
 #ros package files
-/src/*/test/
 /src/*/*/install/
 /src/*/*/log/
 
