@@ -10,7 +10,9 @@ def generate_launch_description():
         Node(
             package='ros_gz_image',
             executable='image_bridge',
-            parameters='/camera',
+            parameters=[
+                '/camera',
+            ],
             remappings=[
                 ('/input/pose', '/turtlesim1/turtle1/pose'),
                 ('/output/cmd_vel', '/turtlesim2/turtle1/cmd_vel'),
