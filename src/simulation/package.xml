@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>vision</name>
+  <name>simulation</name>
   <version>0.0.0</version>
-  <description>Vision related nodes in DroneKNR project</description>
-  <maintainer email="ntfr123@gmail.com">kuba</maintainer>
+  <description>Package cointaing simulator repo and related nodes/launch files</description>
+  <maintainer email="ntfr123@gmail.com">qbaaa-0@github.com</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>

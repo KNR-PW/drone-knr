@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'vision'
+package_name = 'simulation'
 
 setup(
     name=package_name,
@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='kuba',
     maintainer_email='ntfr123@gmail.com',
-    description='Vision related nodes in DroneKNR project',
+    description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
