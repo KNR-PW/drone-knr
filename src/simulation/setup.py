@@ -1,4 +1,6 @@
 from setuptools import setup
+import os
+from glob import glob
 
 package_name = 'simulation'
 
@@ -10,17 +12,18 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name), glob('launch/*launch.py'))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='kuba',
+    maintainer='qbaaa-0@github.com',
     maintainer_email='ntfr123@gmail.com',
-    description='TODO: Package description',
+    description='Package cointaing simulator repo and related nodes/launch files',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'receive_camera = vision.receiveCamera:main'
+            'receive_camera = simulation.receiveCamera:main'
         ],
     },
 )

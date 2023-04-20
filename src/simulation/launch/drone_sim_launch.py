@@ -4,7 +4,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package='vision',
+            package='simulation',
             executable='receive_camera',
         ),
         Node(
@@ -13,9 +13,5 @@ def generate_launch_description():
             parameters=[
                 '/camera',
             ],
-            remappings=[
-                ('/input/pose', '/turtlesim1/turtle1/pose'),
-                ('/output/cmd_vel', '/turtlesim2/turtle1/cmd_vel'),
-            ]
         )
     ])
