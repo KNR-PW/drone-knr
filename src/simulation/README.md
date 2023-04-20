@@ -6,9 +6,9 @@ Install Ignition Gazebo Fortress:
 sudo apt install ros-humble-ros-gz
 ````
 
-Install Ignition Gazebo Fortress development libs and rapidjson:
+Install Ignition Gazebo Fortress dependencies:
 ````bash
-sudo apt install rapidjson-dev libignition-gazebo6-dev
+sudo apt install rapidjson-dev libignition-gazebo6-dev ros-humble-image-transport ros-humble-ros-gz-bridge
 ````
 
 Build with:
@@ -62,7 +62,7 @@ ros2 run ros_gz_image image_bridge camera
 
 Alternatively, we can use launch file (only after building package, and sourcing setup script):
 ```bash
-ros2 launch simluation drone_sim_launch.py
+ros2 launch simulation drone_sim_launch.py
 ```
 
 ### Arm and takeoff
