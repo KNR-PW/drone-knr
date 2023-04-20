@@ -6,7 +6,7 @@ import cv2
  
 class CamReceive(Node):
   def __init__(self):
-    super().__init__('reveice_camera')
+    super().__init__('receive_camera')
     self.subscription = self.create_subscription(
       Image, 
       '/camera', 
