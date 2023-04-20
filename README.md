@@ -10,3 +10,45 @@ The simulator is implemented as an submodule, thus the `--recursive` flag.
 
 # Prerequisities
 ROS2 Humble requires Ubuntu 22.04. Make sure the correct version is installed according to [official tutorial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
+
+
+## Running simulation:
+
+Install Ignition Gazebo Fortress development libs and rapidjson:
+````bash
+sudo apt install rapidjson-dev libignition-gazebo6-dev
+````
+
+Clone the repo and build with:
+````bash
+cd $HOME/drone-knr/src/simulation/drone_sim/
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
+make -j4
+````
+
+Set the ignition environment variables in your `.bashrc` or `.zshrc` or in  the terminal used to run gazebo:
+
+### In terminal
+Assuming that you have clone the repository in `$HOME/drone_sim`:
+```bash
+export IGN_GAZEBO_SYSTEM_PLUGIN_PATH=$HOME/drone-knr/src/simulation/drone_sim/build:$IGN_GAZEBO_SYSTEM_PLUGIN_PATH
+export IGN_GAZEBO_RESOURCE_PATH=$HOME/drone-knr/src/simulation/drone_sim/models:$HOME/drone-knr/src/simulation/drone_sim/worlds:$IGN_GAZEBO_RESOURCE_PATH
+
+```
+
+### Run Simulation
+
+```bash
+$HOME/drone-knr/src/simulation/launch/drone_sim.bash
+```
+
+### Arm and takeoff
+In order to controll the drone one may use SITL terminal and MAVLink commands, eg.:
+
+```bash
+STABILIZE> mode guided
+GUIDED> arm throttle
+GUIDED> takeoff 5
+GUIDED> mode auto
+```
