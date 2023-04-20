@@ -3,7 +3,7 @@ This is KNR repository for control of quadcopter drones based on ROS2 (Humble).
 
 In order to use the repository clone it recursively.
 ```bash
-git clone --recursive https://github.com/qbaaa-0/drone-knr
+git clone --recursive https://github.com/KNR-PW/drone-knr
 ```
 
 The simulator is implemented as an submodule, thus the `--recursive` flag.
