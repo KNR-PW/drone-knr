@@ -27,7 +27,7 @@ devel_isolated/
 
 # vscode stuff
 .vscode/
-
+.idea/
 # Ignore generated docs
 *.dox
 *.wikidoc
