@@ -1,1 +1,1 @@
-Detection[] detections_list
+DetectionMsg[] detections_list

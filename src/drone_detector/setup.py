@@ -36,6 +36,7 @@ setup(
             "image_publisher=drone_detector.image_publisher:main",
             "image_subscriber=drone_detector.image_subscriber:main",
             "detector=drone_detector.detector:main",
+            "detection_subscriber=drone_detector.detection_subscriber:main",
         ],
     },
 )

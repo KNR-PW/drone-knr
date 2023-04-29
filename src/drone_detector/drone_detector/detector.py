@@ -5,8 +5,7 @@ from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Imag
 import cv2  # OpenCV library
 import numpy as np
 # from detection import Detection
-from drone_interfaces.msg import Detection, DetectionsList
-
+from drone_interfaces.msg import DetectionMsg, DetectionsList
 
 class Detection:
     def __init__(self, bounding_box=(0, 0, 0, 0), color="", gps_pos=(0, 0)):
@@ -46,7 +45,7 @@ class Detector(Node):
             self.listener_callback,
             10)
         self.publisher = self.create_publisher(DetectionsList, 'detections', 10)
-        timer_period = 2
+        timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.br = CvBridge()
@@ -77,26 +76,45 @@ class Detector(Node):
                 if area > 100:
                     x, y, w, h = cv2.boundingRect(cnt)
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
-                    cv2.rectangle(frame, (x, y),
-                                  (x + h, y + w),
-                                  (0, 255, 0), 5)
+                    # cv2.rectangle(frame, (x, y),
+                    #               (x + h, y + w),
+                    #               (0, 255, 0), 5)
     #     Convert detections to ros msg
     #     self.detections_to_msg()
-        cv2.imshow("detector", frame)
-        cv2.waitKey(1)
+        # cv2.imshow("detector", frame)
+        # cv2.waitKey(1)
 
     def timer_callback(self):
         self.get_logger().info('Publishing detections list')
+        self.detections_to_msg()
+        # pdl = DetectionsList()
+        # pdl.detections_list.append(det)
+
+
         self.publisher.publish(self.detections_list_msg)
 
+
     def detections_to_msg(self):
-        detection_msg = Detection()
+        detection_msg = DetectionMsg()
         temp_detection_list_msg = DetectionsList()
+        self.detections_list_msg.detections_list.clear()
+
+
         for detection in self.detections:
-            detection_msg.bounding_box = [detection.get_bounding_box()[0], detection.get_bounding_box()[1]]
-            detection_msg.color = detection.get_color()
-            detection_msg.gps_pos = detection.get_gps_pos()
-            temp_detection_list_msg.append(detection_msg)
+
+            detection_msg.bounding_box = [detection.get_bounding_box()[0],
+                                          detection.get_bounding_box()[1],
+                                          detection.get_bounding_box()[2],
+                                          detection.get_bounding_box()[3]]
+            # detection_msg.bounding_box = detection.get_bounding_box()
+            detection_msg.color_name = detection.get_color()
+            detection_msg.gps_position = [detection.get_gps_pos()[0], detection.get_gps_pos()[1]]
+
+            temp_detection_list_msg.detections_list.append(detection_msg)
+
+
+        self.detections_list_msg = temp_detection_list_msg
+        # self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
 
 
 def main(args=None):
