@@ -100,7 +100,7 @@ class Ui_MainWindow(object):
 
     def timer_image_update(self):
         print("timer update")
-        rclpy.spin_once(self.node, timeout_sec=2)
+        rclpy.spin_once(self.node, timeout_sec=1)
         if self.got_frame:
             self.label.setPixmap(self.convert_cv_qt(self.frame))
         print("timer update end")
@@ -165,6 +165,7 @@ class Ui_MainWindow(object):
         self.horizontalSlider.setMaximum(255)
         self.horizontalSlider.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider.setObjectName("horizontalSlider")
+        self.horizontalSlider.valueChanged.connect(self.slider1_changed)
         self.horizontalLayout_2.addWidget(self.horizontalSlider)
         self.spinBox = QtWidgets.QSpinBox(self.widget)
         self.spinBox.setMaximum(255)
@@ -259,6 +260,9 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         self.ros_init()
 
+    def slider1_changed(self):
+        value = self.horizontalSlider.value()
+        print(value)
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
