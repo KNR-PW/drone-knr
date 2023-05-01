@@ -7,6 +7,7 @@ import numpy as np
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
 
+
 class Detection:
     def __init__(self, bounding_box=(0, 0, 0, 0), color="", gps_pos=(0, 0)):
         # Format x, y, w, h
@@ -31,11 +32,12 @@ class Detection:
 
     def add_image(self, image):
         pass
+
+
 class Detector(Node):
     """
     Create an ImagePublisher class, which is a subclass of the Node class.
     """
-
 
     def __init__(self):
         super().__init__('detector')
@@ -49,9 +51,9 @@ class Detector(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.br = CvBridge()
-        self.thresholds = {"brown": (np.array([50,80,100 ]), np.array([80, 110,140 ])),
-                           "beige": (np.array([0,0,140]), np.array([100, 100, 255])),
-                           "golden": (np.array([0,0,140]), np.array([100, 100, 255]))}
+        self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
+                           "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
+                           "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
         # self.detection_msg = Detection()
         self.detections_list_msg = DetectionsList()
@@ -65,7 +67,7 @@ class Detector(Node):
         # Convert ROS Image message to OpenCV image
         frame = self.br.imgmsg_to_cv2(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
+        # Detection
         for col in self.thresholds:
             thres = self.thresholds[col]
             mask = cv2.inRange(frame, thres[0], thres[1])
@@ -76,32 +78,18 @@ class Detector(Node):
                 if area > 100:
                     x, y, w, h = cv2.boundingRect(cnt)
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
-                    # cv2.rectangle(frame, (x, y),
-                    #               (x + h, y + w),
-                    #               (0, 255, 0), 5)
-    #     Convert detections to ros msg
-    #     self.detections_to_msg()
-        # cv2.imshow("detector", frame)
-        # cv2.waitKey(1)
 
     def timer_callback(self):
         self.get_logger().info('Publishing detections list')
         self.detections_to_msg()
-        # pdl = DetectionsList()
-        # pdl.detections_list.append(det)
-
-
         self.publisher.publish(self.detections_list_msg)
-
 
     def detections_to_msg(self):
         detection_msg = DetectionMsg()
         temp_detection_list_msg = DetectionsList()
         self.detections_list_msg.detections_list.clear()
 
-
         for detection in self.detections:
-
             detection_msg.bounding_box = [detection.get_bounding_box()[0],
                                           detection.get_bounding_box()[1],
                                           detection.get_bounding_box()[2],
@@ -111,7 +99,6 @@ class Detector(Node):
             detection_msg.gps_position = [detection.get_gps_pos()[0], detection.get_gps_pos()[1]]
 
             temp_detection_list_msg.detections_list.append(detection_msg)
-
 
         self.detections_list_msg = temp_detection_list_msg
         # self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
