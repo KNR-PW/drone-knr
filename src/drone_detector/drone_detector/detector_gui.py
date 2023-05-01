@@ -1,4 +1,3 @@
-
 import rclpy  # Python library for ROS 2
 from PyQt5.QtGui import QPixmap
 from rclpy.node import Node  # Handles the creation of nodes
@@ -10,8 +9,10 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 import time
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMenu, QAction, QStyle, qApp
 from PyQt5.QtCore import Qt, QTimer
+import numpy as np
 
 import sys
+
 
 # class DetMainWindow(QtWidgets.QMainWindow):
 #     def __init__(self):
@@ -63,7 +64,7 @@ import sys
 class Ui_MainWindow(object):
 
     def __init__(self):
-        self.float_topic_name = "video_frames"
+        self.float_topic_name = "camera"
         self.timer = QTimer()
         self.timer.timeout.connect(self.timer_image_update)
         self.disply_width = 640
@@ -72,9 +73,21 @@ class Ui_MainWindow(object):
         self.frame = 0
         self.got_frame = False
 
+        #     Storing thresholds values from sliders
+        #     red color
+        self.R_lower = 0
+        self.R_upper = 0
+        #     blue color
+        self.B_lower = 0
+        self.B_upper = 0
+        #    green color
+        self.G_lower = 0
+        self.G_upper = 0
+
     def ros_shutdown(self):
         self.node.destroy_node()
         rclpy.shutdown()
+
     def ros_init(self):
         print("ros_init")
         rclpy.init(args=None)
@@ -95,60 +108,70 @@ class Ui_MainWindow(object):
             print("ros connection successful")
         else:
             print("ros connection failed")
-    #     Start timer
+        #     Start timer
         self.timer.start(100)
 
     def timer_image_update(self):
-        print("timer update")
+        # print("timer update")
         rclpy.spin_once(self.node, timeout_sec=1)
         if self.got_frame:
-            self.label.setPixmap(self.convert_cv_qt(self.frame))
-        print("timer update end")
+            converted_frame = self.convert_cv_qt(self.frame)
+            # Display normal image on label
+            self.label.setPixmap(converted_frame)
+            # Display thresholded image on label2
+            mask = cv2.inRange(self.frame, np.array([self.R_lower, self.G_lower, self.B_lower]),
+                               np.array([self.R_upper, self.G_upper, self.B_upper]))
+            masked_frame = cv2.bitwise_and(self.frame, self.frame, mask=mask)
+            self.label_2.setPixmap(self.convert_cv_qt(masked_frame))
+
+        # print("timer update end")
 
         # self.timer.start(1000)
 
     def image_callback(self, img):
-        print("image callback")
+        # print("image callback")
         frame = self.br.imgmsg_to_cv2(img)
         self.got_frame = True
         self.frame = frame
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
-        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        # rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        rgb_image = cv_img
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
         p = convert_to_Qt_format.scaled(self.disply_width, self.display_height, Qt.KeepAspectRatio)
         return QPixmap.fromImage(p)
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1454, 894)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        self.widget = QtWidgets.QWidget(self.centralwidget)
-        self.widget.setGeometry(QtCore.QRect(10, 10, 1431, 831))
-        self.widget.setObjectName("widget")
-        self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.widget)
+        self.layoutWidget = QtWidgets.QWidget(self.centralwidget)
+        self.layoutWidget.setGeometry(QtCore.QRect(10, 10, 1431, 831))
+        self.layoutWidget.setObjectName("layoutWidget")
+        self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.layoutWidget)
         self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetNoConstraint)
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.label_2 = QtWidgets.QLabel(self.widget)
+        self.label_2 = QtWidgets.QLabel(self.layoutWidget)
         self.label_2.setMinimumSize(QtCore.QSize(640, 480))
         self.label_2.setMaximumSize(QtCore.QSize(640, 480))
         self.label_2.setLineWidth(1)
         self.label_2.setText("")
-        self.label_2.setPixmap(QtGui.QPixmap("shades.png")) #inserting the photo
+        self.label_2.setPixmap(QtGui.QPixmap("../../../../../../Downloads/shades 2.png"))
         self.label_2.setScaledContents(False)
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
-        self.label = QtWidgets.QLabel(self.widget)
+        self.label = QtWidgets.QLabel(self.layoutWidget)
         self.label.setMinimumSize(QtCore.QSize(640, 480))
         self.label.setMaximumSize(QtCore.QSize(640, 480))
         self.label.setText("")
-        self.label.setPixmap(QtGui.QPixmap("shades 2.png")) #inserting the photo
+        self.label.setPixmap(QtGui.QPixmap("../../../../../../Downloads/shades.png"))
         self.label.setScaledContents(False)
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
@@ -161,37 +184,45 @@ class Ui_MainWindow(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.horizontalSlider = QtWidgets.QSlider(self.widget)
+        self.label_3 = QtWidgets.QLabel(self.layoutWidget)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout_2.addWidget(self.label_3)
+        self.horizontalSlider = QtWidgets.QSlider(self.layoutWidget)
         self.horizontalSlider.setMaximum(255)
         self.horizontalSlider.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider.setObjectName("horizontalSlider")
-        self.horizontalSlider.valueChanged.connect(self.slider1_changed)
         self.horizontalLayout_2.addWidget(self.horizontalSlider)
-        self.spinBox = QtWidgets.QSpinBox(self.widget)
+        self.spinBox = QtWidgets.QSpinBox(self.layoutWidget)
         self.spinBox.setMaximum(255)
         self.spinBox.setObjectName("spinBox")
         self.horizontalLayout_2.addWidget(self.spinBox)
         self.verticalLayout.addLayout(self.horizontalLayout_2)
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.horizontalSlider_2 = QtWidgets.QSlider(self.widget)
+        self.label_4 = QtWidgets.QLabel(self.layoutWidget)
+        self.label_4.setObjectName("label_4")
+        self.horizontalLayout_3.addWidget(self.label_4)
+        self.horizontalSlider_2 = QtWidgets.QSlider(self.layoutWidget)
         self.horizontalSlider_2.setMaximum(255)
         self.horizontalSlider_2.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider_2.setObjectName("horizontalSlider_2")
         self.horizontalLayout_3.addWidget(self.horizontalSlider_2)
-        self.spinBox_2 = QtWidgets.QSpinBox(self.widget)
+        self.spinBox_2 = QtWidgets.QSpinBox(self.layoutWidget)
         self.spinBox_2.setMaximum(255)
         self.spinBox_2.setObjectName("spinBox_2")
         self.horizontalLayout_3.addWidget(self.spinBox_2)
         self.verticalLayout.addLayout(self.horizontalLayout_3)
         self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        self.horizontalSlider_3 = QtWidgets.QSlider(self.widget)
+        self.label_5 = QtWidgets.QLabel(self.layoutWidget)
+        self.label_5.setObjectName("label_5")
+        self.horizontalLayout_4.addWidget(self.label_5)
+        self.horizontalSlider_3 = QtWidgets.QSlider(self.layoutWidget)
         self.horizontalSlider_3.setMaximum(255)
         self.horizontalSlider_3.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider_3.setObjectName("horizontalSlider_3")
         self.horizontalLayout_4.addWidget(self.horizontalSlider_3)
-        self.spinBox_3 = QtWidgets.QSpinBox(self.widget)
+        self.spinBox_3 = QtWidgets.QSpinBox(self.layoutWidget)
         self.spinBox_3.setMaximum(255)
         self.spinBox_3.setObjectName("spinBox_3")
         self.horizontalLayout_4.addWidget(self.spinBox_3)
@@ -201,36 +232,36 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.horizontalLayout_5 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_5.setObjectName("horizontalLayout_5")
-        self.horizontalSlider_4 = QtWidgets.QSlider(self.widget)
+        self.horizontalSlider_4 = QtWidgets.QSlider(self.layoutWidget)
         self.horizontalSlider_4.setMaximum(255)
         self.horizontalSlider_4.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider_4.setObjectName("horizontalSlider_4")
         self.horizontalLayout_5.addWidget(self.horizontalSlider_4)
-        self.spinBox_4 = QtWidgets.QSpinBox(self.widget)
+        self.spinBox_4 = QtWidgets.QSpinBox(self.layoutWidget)
         self.spinBox_4.setMaximum(255)
         self.spinBox_4.setObjectName("spinBox_4")
         self.horizontalLayout_5.addWidget(self.spinBox_4)
         self.verticalLayout_2.addLayout(self.horizontalLayout_5)
         self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_6.setObjectName("horizontalLayout_6")
-        self.horizontalSlider_5 = QtWidgets.QSlider(self.widget)
+        self.horizontalSlider_5 = QtWidgets.QSlider(self.layoutWidget)
         self.horizontalSlider_5.setMaximum(255)
         self.horizontalSlider_5.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider_5.setObjectName("horizontalSlider_5")
         self.horizontalLayout_6.addWidget(self.horizontalSlider_5)
-        self.spinBox_5 = QtWidgets.QSpinBox(self.widget)
+        self.spinBox_5 = QtWidgets.QSpinBox(self.layoutWidget)
         self.spinBox_5.setMaximum(255)
         self.spinBox_5.setObjectName("spinBox_5")
         self.horizontalLayout_6.addWidget(self.spinBox_5)
         self.verticalLayout_2.addLayout(self.horizontalLayout_6)
         self.horizontalLayout_7 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_7.setObjectName("horizontalLayout_7")
-        self.horizontalSlider_6 = QtWidgets.QSlider(self.widget)
+        self.horizontalSlider_6 = QtWidgets.QSlider(self.layoutWidget)
         self.horizontalSlider_6.setMaximum(255)
         self.horizontalSlider_6.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider_6.setObjectName("horizontalSlider_6")
         self.horizontalLayout_7.addWidget(self.horizontalSlider_6)
-        self.spinBox_6 = QtWidgets.QSpinBox(self.widget)
+        self.spinBox_6 = QtWidgets.QSpinBox(self.layoutWidget)
         self.spinBox_6.setMaximum(255)
         self.spinBox_6.setObjectName("spinBox_6")
         self.horizontalLayout_7.addWidget(self.spinBox_6)
@@ -239,17 +270,26 @@ class Ui_MainWindow(object):
         self.horizontalLayout_9.addLayout(self.horizontalLayout_8)
         self.verticalLayout_3 = QtWidgets.QVBoxLayout()
         self.verticalLayout_3.setObjectName("verticalLayout_3")
-        self.pushButton = QtWidgets.QPushButton(self.widget)
-        self.pushButton.setObjectName("pushButton")
+        self.radioButton = QtWidgets.QRadioButton(self.layoutWidget)
+        self.radioButton.setObjectName("radioButton")
+        self.verticalLayout_3.addWidget(self.radioButton)
+        self.radioButton_3 = QtWidgets.QRadioButton(self.layoutWidget)
+        self.radioButton_3.setObjectName("radioButton_3")
+        self.verticalLayout_3.addWidget(self.radioButton_3)
+        self.radioButton_2 = QtWidgets.QRadioButton(self.layoutWidget)
+        self.radioButton_2.setObjectName("radioButton_2")
+        self.verticalLayout_3.addWidget(self.radioButton_2)
+        self.pushButton = QtWidgets.QPushButton(self.layoutWidget)
+        self.pushButton.setObjectName("Next")
         self.verticalLayout_3.addWidget(self.pushButton)
-        self.pushButton_2 = QtWidgets.QPushButton(self.widget)
-        self.pushButton_2.setObjectName("pushButton_2")
+        self.pushButton_2 = QtWidgets.QPushButton(self.layoutWidget)
+        self.pushButton_2.setObjectName("OK")
         self.verticalLayout_3.addWidget(self.pushButton_2)
         self.horizontalLayout_9.addLayout(self.verticalLayout_3)
         self.verticalLayout_4.addLayout(self.horizontalLayout_9)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1454, 21))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1454, 23))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -258,20 +298,72 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        # connect functions with sliders and buttons
+        self.connect_signals()
+        # initialize ros connection and start subscriber
         self.ros_init()
 
-    def slider1_changed(self):
+    def connect_signals(self):
+        self.horizontalSlider.valueChanged.connect(self.slider_1_changed)
+        self.horizontalSlider_2.valueChanged.connect(self.slider_2_changed)
+        self.horizontalSlider_3.valueChanged.connect(self.slider_3_changed)
+        self.horizontalSlider_4.valueChanged.connect(self.slider_4_changed)
+        self.horizontalSlider_5.valueChanged.connect(self.slider_5_changed)
+        self.horizontalSlider_6.valueChanged.connect(self.slider_6_changed)
+
+    def slider_1_changed(self):
+        # Lower RED
         value = self.horizontalSlider.value()
+        self.R_lower = value
+        print("Slider 1 changed")
         print(value)
+
+    def slider_2_changed(self):
+        # Lower GREEN
+        value = self.horizontalSlider_2.value()
+        self.G_lower = value
+        print("Slider 2 changed")
+        print(value)
+
+    def slider_3_changed(self):
+        #  Lower BLUE
+        value = self.horizontalSlider_3.value()
+        self.B_lower = value
+        print("Slider 3 changed")
+        print(value)
+
+    def slider_4_changed(self):
+        # Upper RED
+        value = self.horizontalSlider_4.value()
+        self.R_upper = value
+        print("Slider 4 changed")
+        print(value)
+
+    def slider_5_changed(self):
+        #  Upper GREEN
+        value = self.horizontalSlider_5.value()
+        self.G_upper = value
+        print("Slider 5 changed")
+        print(value)
+
+    def slider_6_changed(self):
+        #  Upper BLUE
+        value = self.horizontalSlider_6.value()
+        self.B_upper = value
+        print("Slider 6 changed")
+        print(value)
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.pushButton.setText(_translate("MainWindow", "NEXT"))
+        self.label_3.setText(_translate("MainWindow", "Red"))
+        self.label_4.setText(_translate("MainWindow", "Green"))
+        self.label_5.setText(_translate("MainWindow", "Blue"))
+        self.radioButton.setText(_translate("MainWindow", "Brown"))
+        self.radioButton_3.setText(_translate("MainWindow", "Golden"))
+        self.radioButton_2.setText(_translate("MainWindow", "Beige"))
+        self.pushButton.setText(_translate("MainWindow", "Next"))
         self.pushButton_2.setText(_translate("MainWindow", "OK"))
-
-
-
-
 
 
 def main(args=None):
