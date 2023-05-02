@@ -6,6 +6,7 @@ import cv2  # OpenCV library
 import numpy as np
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
+from std_msgs.msg import Int32MultiArray
 
 
 class Detection:
@@ -46,6 +47,10 @@ class Detector(Node):
             'camera',
             self.listener_callback,
             10)
+        self.thresholds_subscription = self.create_subscription(Int32MultiArray,
+                                                                "detector_thresholds",
+                                                                self.thresholds_callback,
+                                                                10)
         self.publisher = self.create_publisher(DetectionsList, 'detections', 10)
         timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -59,14 +64,24 @@ class Detector(Node):
         self.detections_list_msg = DetectionsList()
         self.get_logger().info('Detector node created')
 
+    def thresholds_callback(self, msg):
+        thres_array = msg.data
+        col_arr = ["brown", "beige", "golden"]
+        col = col_arr[thres_array[0] - 1]
+        self.thresholds[col] = (np.array([thres_array[1], thres_array[2], thres_array[3]]),
+                                np.array([thres_array[4], thres_array[5], thres_array[6]]))
+        print(self.thresholds)
+
     def listener_callback(self, frame):
-        self.get_logger().info('Receiving video frame and detecting')
+        # self.get_logger().info('Receiving video frame and detecting')
         self.detections.clear()
         # Display the message on the console
 
         # Convert ROS Image message to OpenCV image
         frame = self.br.imgmsg_to_cv2(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
+
         # Detection
         for col in self.thresholds:
             thres = self.thresholds[col]
@@ -80,28 +95,25 @@ class Detector(Node):
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
 
     def timer_callback(self):
-        self.get_logger().info('Publishing detections list')
         self.detections_to_msg()
         self.publisher.publish(self.detections_list_msg)
 
     def detections_to_msg(self):
-        detection_msg = DetectionMsg()
         temp_detection_list_msg = DetectionsList()
         self.detections_list_msg.detections_list.clear()
 
         for detection in self.detections:
+            detection_msg = DetectionMsg()
             detection_msg.bounding_box = [detection.get_bounding_box()[0],
                                           detection.get_bounding_box()[1],
                                           detection.get_bounding_box()[2],
                                           detection.get_bounding_box()[3]]
-            # detection_msg.bounding_box = detection.get_bounding_box()
             detection_msg.color_name = detection.get_color()
             detection_msg.gps_position = [detection.get_gps_pos()[0], detection.get_gps_pos()[1]]
 
             temp_detection_list_msg.detections_list.append(detection_msg)
 
-        self.detections_list_msg = temp_detection_list_msg
-        # self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
+        self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
 
 
 def main(args=None):
