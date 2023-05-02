@@ -7,11 +7,11 @@ import numpy as np
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
 
+
 class DetectionSubscriber(Node):
     """
     Create an ImagePublisher class, which is a subclass of the Node class.
     """
-
 
     def __init__(self):
         super().__init__('detection_subscriber')
@@ -30,7 +30,7 @@ class DetectionSubscriber(Node):
         self.frame = 0
         # self.detection_msg = Detection()
         self.detections_list_msg = DetectionsList()
-        self.get_logger().info('DetectionPublisher node created')
+        self.get_logger().info('DetectionSubscriber node created')
 
     def image_callback(self, frame):
         # self.get_logger().info('Received frame detections list')
@@ -38,20 +38,18 @@ class DetectionSubscriber(Node):
 
         frame = self.br.imgmsg_to_cv2(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
         self.frame = frame
 
-
-
     def detection_callback(self, detections):
-        # self.get_logger().info('Received detections list')
-        self.get_logger().info(detections.detections_list[0].color_name)
         for det in detections.detections_list:
             x, y, w, h = det.bounding_box
             cv2.rectangle(self.frame, (x, y),
-                        (x + h, y + w),
-                        (0, 255, 0), 5)
+                          (x + h, y + w),
+                          (0, 255, 0), 5)
         cv2.imshow("detector", self.frame)
         cv2.waitKey(1)
+
 
 def main(args=None):
     rclpy.init(args=args)
