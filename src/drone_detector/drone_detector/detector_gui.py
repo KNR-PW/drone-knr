@@ -15,57 +15,10 @@ from std_msgs.msg import Int32MultiArray
 import sys
 
 
-# class DetMainWindow(QtWidgets.QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-#         self.float_topic_name = "/video_frames"
-#         self.timer = QtWidgets.QTimer(self)
-#         self.timer.timeout.connect(self.timer_image_update)
-#         self.br = CvBridge()
-#
-#     def ros_init(self):
-#         rclpy.init(args=None)
-#         self.node = Node('detector_gui')
-#         self.sub = self.node.create_subscription(
-#             Image,
-#             self.float_topic_name,
-#             self.image_callback,
-#             10,
-#         )
-#         # spin once, timeout_sec 5[s]
-#         timeout_sec_rclpy = 5
-#         timeout_init = time.time()
-#         rclpy.spin_once(self.node, timeout_sec=timeout_sec_rclpy)
-#         timeout_end = time.time()
-#         ros_connect_time = timeout_end - timeout_init
-#         if ros_connect_time >= timeout_sec_rclpy:
-#             print("ros connection successful")
-#         else:
-#             print("ros connection failed")
-#     #     Start timer
-#         self.timer.start(0.5)
-#
-#     def timer_image_update(self):
-#         rclpy.spin_once(self.node)
-#         self.label.setPixmap(self.convert_cv_qt(self.frame))
-#         self.timer.start(0.5)
-#
-#     def image_callback(self, img):
-#         frame = self.br.imgmsg_to_cv2(img)
-#         self.frame = frame
-#
-#     def convert_cv_qt(self, cv_img):
-#         """Convert from an opencv image to QPixmap"""
-#         rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-#         h, w, ch = rgb_image.shape
-#         bytes_per_line = ch * w
-#         convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
-#         p = convert_to_Qt_format.scaled(self.disply_width, self.display_height, Qt.KeepAspectRatio)
-#         return QPixmap.fromImage(p)
 class Ui_MainWindow(object):
 
     def __init__(self):
-        self.float_topic_name = "video_frames"
+        self.float_topic_name = "camera"
         self.timer = QTimer()
         self.timer.timeout.connect(self.timer_image_update)
         self.disply_width = 640
@@ -76,6 +29,7 @@ class Ui_MainWindow(object):
 
         # Color to calibrate (selected with radio button)
         self.calibrate_color = "Brown"
+        self.color_number = 1
 
         #     Storing thresholds values from sliders
         #     red color
@@ -87,6 +41,9 @@ class Ui_MainWindow(object):
         #    green color
         self.G_lower = 0
         self.G_upper = 0
+
+        # value to handle stoping and playing video
+        self.run_video = True
 
     def ros_shutdown(self):
         self.node.destroy_node()
@@ -120,16 +77,19 @@ class Ui_MainWindow(object):
 
     def timer_image_update(self):
         # print("timer update")
-        rclpy.spin_once(self.node, timeout_sec=1)
-        if self.got_frame:
-            converted_frame = self.convert_cv_qt(self.frame)
-            # Display normal image on label
-            self.label_2.setPixmap(converted_frame)
-            # Display thresholded image on label2
-            mask = cv2.inRange(self.frame, np.array([self.R_lower, self.G_lower, self.B_lower]),
-                               np.array([self.R_upper, self.G_upper, self.B_upper]))
-            masked_frame = cv2.bitwise_and(self.frame, self.frame, mask=mask)
-            self.label.setPixmap(self.convert_cv_qt(masked_frame))
+        if self.run_video:
+            rclpy.spin_once(self.node, timeout_sec=1)
+            if self.got_frame:
+                converted_frame = self.convert_cv_qt(self.frame)
+                # Display normal image on label
+                self.label_2.setPixmap(converted_frame)
+        # Display thresholded image on label2
+        self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+        mask = cv2.inRange(self.frame, np.array([self.R_lower, self.G_lower, self.B_lower]),
+                           np.array([self.R_upper, self.G_upper, self.B_upper]))
+        self.frame = cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR)
+        masked_frame = cv2.bitwise_and(self.frame, self.frame, mask=mask)
+        self.label.setPixmap(self.convert_cv_qt(masked_frame))
 
         # print("timer update end")
 
@@ -138,9 +98,11 @@ class Ui_MainWindow(object):
     def ros_publish_thresholds(self):
         # Publishing thresholds from gui
         # Thresholds are published in int32 array in format:
-        # [R_lower, G_lower, B_lower, R_upper, G_upper, B_upper]
+        # [color_number, R_lower, G_lower, B_lower, R_upper, G_upper, B_upper]
+        # color_number: 1-Brown, 2-Beige, 3-Golden
         thres_msg = Int32MultiArray()
-        thres_msg.data = [self.R_lower, self.G_lower, self.B_lower, self.R_upper, self.G_upper, self.B_upper]
+        thres_msg.data = [self.color_number, self.R_lower, self.G_lower, self.B_lower, self.R_upper, self.G_upper,
+                          self.B_upper]
         self.thresholds_publisher.publish(thres_msg)
         print("thresholds published")
 
@@ -152,8 +114,8 @@ class Ui_MainWindow(object):
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
-        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-        # rgb_image = cv_img
+        # rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        rgb_image = cv_img
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
@@ -296,7 +258,7 @@ class Ui_MainWindow(object):
         self.radioButton_2.setObjectName("radioButton_2")
         self.verticalLayout_3.addWidget(self.radioButton_2)
         self.pushButton = QtWidgets.QPushButton(self.layoutWidget)
-        self.pushButton.setObjectName("Next")
+        self.pushButton.setObjectName("Stop/Start")
         self.verticalLayout_3.addWidget(self.pushButton)
         self.pushButton_2 = QtWidgets.QPushButton(self.layoutWidget)
         self.pushButton_2.setObjectName("OK")
@@ -317,7 +279,7 @@ class Ui_MainWindow(object):
         # connect functions with sliders and buttons
         self.connect_signals()
         # Set upper sliders to max value (255)
-        self.set_sliders_deafult()
+        self.set_sliders_default()
         # initialize ros connection and start subscriber
         self.ros_init()
 
@@ -332,13 +294,27 @@ class Ui_MainWindow(object):
 
         # Radio buttons
         self.radioButton.toggled.connect(self.radio_button_update)
+        self.radioButton.setChecked(True)
         self.radioButton_2.toggled.connect(self.radio_button_update)
         self.radioButton_3.toggled.connect(self.radio_button_update)
 
         # Ok button
         self.pushButton_2.clicked.connect(self.ok_button_clicked)
+        # Stop/Start buttom
+        self.pushButton.clicked.connect(self.stop_start_button_clicked)
 
-    def set_sliders_deafult(self):
+        # Spin Boxes
+        self.spinBox.valueChanged.connect(self.horizontalSlider.setValue)
+        self.spinBox_2.valueChanged.connect(self.horizontalSlider_2.setValue)
+        self.spinBox_3.valueChanged.connect(self.horizontalSlider_3.setValue)
+        self.spinBox_4.valueChanged.connect(self.horizontalSlider_4.setValue)
+        self.spinBox_5.valueChanged.connect(self.horizontalSlider_5.setValue)
+        self.spinBox_6.valueChanged.connect(self.horizontalSlider_6.setValue)
+
+    def set_sliders_default(self):
+        self.horizontalSlider.setValue(0)
+        self.horizontalSlider_2.setValue(0)
+        self.horizontalSlider_3.setValue(0)
         self.horizontalSlider_4.setValue(255)
         self.horizontalSlider_5.setValue(255)
         self.horizontalSlider_6.setValue(255)
@@ -407,15 +383,22 @@ class Ui_MainWindow(object):
     def radio_button_update(self):
         if self.radioButton.isChecked():
             self.calibrate_color = "Brown"
-        if self.radioButton_3.isChecked():
-            self.calibrate_color = "Golden"
+            self.color_number = 1
         if self.radioButton_2.isChecked():
+            self.calibrate_color = "Golden"
+            self.color_number = 3
+        if self.radioButton_3.isChecked():
+            self.color_number = 2
             self.calibrate_color = "Beige"
         print(self.calibrate_color)
 
     def ok_button_clicked(self):
         self.ros_publish_thresholds()
         self.show_popup()
+        self.set_sliders_default()
+
+    def stop_start_button_clicked(self):
+        self.run_video = not self.run_video
 
     def show_popup(self):
         msg = QMessageBox()
@@ -441,9 +424,9 @@ class Ui_MainWindow(object):
         self.label_4.setText(_translate("MainWindow", "Green"))
         self.label_5.setText(_translate("MainWindow", "Blue"))
         self.radioButton.setText(_translate("MainWindow", "Brown"))
-        self.radioButton_3.setText(_translate("MainWindow", "Golden"))
-        self.radioButton_2.setText(_translate("MainWindow", "Beige"))
-        self.pushButton.setText(_translate("MainWindow", "Next"))
+        self.radioButton_3.setText(_translate("MainWindow", "Beige"))
+        self.radioButton_2.setText(_translate("MainWindow", "Golden"))
+        self.pushButton.setText(_translate("MainWindow", "Stop/Start"))
         self.pushButton_2.setText(_translate("MainWindow", "OK"))
 
 
