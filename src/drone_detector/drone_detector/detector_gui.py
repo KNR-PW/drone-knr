@@ -7,7 +7,7 @@ import cv2  # OpenCV library
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 import time
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMenu, QAction, QStyle, qApp
+from PyQt5.QtWidgets import QMainWindow, QApplication, QMenu, QAction, QStyle, qApp, QMessageBox
 from PyQt5.QtCore import Qt, QTimer
 import numpy as np
 
@@ -64,7 +64,7 @@ import sys
 class Ui_MainWindow(object):
 
     def __init__(self):
-        self.float_topic_name = "camera"
+        self.float_topic_name = "video_frames"
         self.timer = QTimer()
         self.timer.timeout.connect(self.timer_image_update)
         self.disply_width = 640
@@ -72,6 +72,9 @@ class Ui_MainWindow(object):
         self.br = CvBridge()
         self.frame = 0
         self.got_frame = False
+
+        # Color to calibrate (selected with radio button)
+        self.calibrate_color = "Brown"
 
         #     Storing thresholds values from sliders
         #     red color
@@ -117,12 +120,12 @@ class Ui_MainWindow(object):
         if self.got_frame:
             converted_frame = self.convert_cv_qt(self.frame)
             # Display normal image on label
-            self.label.setPixmap(converted_frame)
+            self.label_2.setPixmap(converted_frame)
             # Display thresholded image on label2
             mask = cv2.inRange(self.frame, np.array([self.R_lower, self.G_lower, self.B_lower]),
                                np.array([self.R_upper, self.G_upper, self.B_upper]))
             masked_frame = cv2.bitwise_and(self.frame, self.frame, mask=mask)
-            self.label_2.setPixmap(self.convert_cv_qt(masked_frame))
+            self.label.setPixmap(self.convert_cv_qt(masked_frame))
 
         # print("timer update end")
 
@@ -136,8 +139,8 @@ class Ui_MainWindow(object):
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
-        # rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-        rgb_image = cv_img
+        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        # rgb_image = cv_img
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
@@ -300,10 +303,14 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
         # connect functions with sliders and buttons
         self.connect_signals()
+        # Set upper sliders to max value (255)
+        self.set_sliders_deafult()
         # initialize ros connection and start subscriber
         self.ros_init()
 
+
     def connect_signals(self):
+        # Sliders
         self.horizontalSlider.valueChanged.connect(self.slider_1_changed)
         self.horizontalSlider_2.valueChanged.connect(self.slider_2_changed)
         self.horizontalSlider_3.valueChanged.connect(self.slider_3_changed)
@@ -311,10 +318,27 @@ class Ui_MainWindow(object):
         self.horizontalSlider_5.valueChanged.connect(self.slider_5_changed)
         self.horizontalSlider_6.valueChanged.connect(self.slider_6_changed)
 
+        # Radio buttons
+        self.radioButton.toggled.connect(self.radio_button_update)
+        self.radioButton_2.toggled.connect(self.radio_button_update)
+        self.radioButton_3.toggled.connect(self.radio_button_update)
+
+        # Ok button
+        self.pushButton_2.clicked.connect(self.ok_button_clicked)
+
+    def set_sliders_deafult(self):
+        self.horizontalSlider_4.setValue(255)
+        self.horizontalSlider_5.setValue(255)
+        self.horizontalSlider_6.setValue(255)
+
     def slider_1_changed(self):
         # Lower RED
         value = self.horizontalSlider.value()
         self.R_lower = value
+
+        # Set spinbox to slider value
+        self.spinBox.setValue(value)
+
         print("Slider 1 changed")
         print(value)
 
@@ -322,6 +346,9 @@ class Ui_MainWindow(object):
         # Lower GREEN
         value = self.horizontalSlider_2.value()
         self.G_lower = value
+
+        # Set spinbox to slider value
+        self.spinBox_2.setValue(value)
         print("Slider 2 changed")
         print(value)
 
@@ -329,6 +356,9 @@ class Ui_MainWindow(object):
         #  Lower BLUE
         value = self.horizontalSlider_3.value()
         self.B_lower = value
+
+        # Set spinbox to slider value
+        self.spinBox_3.setValue(value)
         print("Slider 3 changed")
         print(value)
 
@@ -336,6 +366,9 @@ class Ui_MainWindow(object):
         # Upper RED
         value = self.horizontalSlider_4.value()
         self.R_upper = value
+
+        # Set spinbox to slider value
+        self.spinBox_4.setValue(value)
         print("Slider 4 changed")
         print(value)
 
@@ -343,6 +376,9 @@ class Ui_MainWindow(object):
         #  Upper GREEN
         value = self.horizontalSlider_5.value()
         self.G_upper = value
+
+        # Set spinbox to slider value
+        self.spinBox_5.setValue(value)
         print("Slider 5 changed")
         print(value)
 
@@ -350,9 +386,40 @@ class Ui_MainWindow(object):
         #  Upper BLUE
         value = self.horizontalSlider_6.value()
         self.B_upper = value
+
+        # Set spinbox to slider value
+        self.spinBox_6.setValue(value)
         print("Slider 6 changed")
         print(value)
 
+
+    def radio_button_update(self):
+        if self.radioButton.isChecked():
+            self.calibrate_color = "Brown"
+        if self.radioButton_3.isChecked():
+            self.calibrate_color = "Golden"
+        if self.radioButton_2.isChecked():
+            self.calibrate_color = "Beige"
+        print(self.calibrate_color)
+
+    def ok_button_clicked(self):
+        self.show_popup()
+    def show_popup(self):
+        msg = QMessageBox()
+        msg.setWindowTitle("Thresholds calibration")
+        msg.setText("Thresholds calibrated for color " + self.calibrate_color)
+        msg.setIcon(QMessageBox.Information)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        # msg.setInformativeText("informative text, ya!")
+
+        msg.setDetailedText("details")
+
+        msg.buttonClicked.connect(self.popup_button)
+        x = msg.exec_()
+
+    def popup_button(self, i):
+        print(i.text())
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
