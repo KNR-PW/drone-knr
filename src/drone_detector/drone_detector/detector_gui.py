@@ -10,6 +10,7 @@ import time
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMenu, QAction, QStyle, qApp, QMessageBox
 from PyQt5.QtCore import Qt, QTimer
 import numpy as np
+from std_msgs.msg import Int32MultiArray
 
 import sys
 
@@ -101,6 +102,9 @@ class Ui_MainWindow(object):
             self.image_callback,
             10,
         )
+        self.thresholds_publisher = self.node.create_publisher(Int32MultiArray,
+                                                               "detector_thresholds",
+                                                               10)
         # spin once, timeout_sec 5[s]
         timeout_sec_rclpy = 5
         timeout_init = time.time()
@@ -130,6 +134,15 @@ class Ui_MainWindow(object):
         # print("timer update end")
 
         # self.timer.start(1000)
+
+    def ros_publish_thresholds(self):
+        # Publishing thresholds from gui
+        # Thresholds are published in int32 array in format:
+        # [R_lower, G_lower, B_lower, R_upper, G_upper, B_upper]
+        thres_msg = Int32MultiArray()
+        thres_msg.data = [self.R_lower, self.G_lower, self.B_lower, self.R_upper, self.G_upper, self.B_upper]
+        self.thresholds_publisher.publish(thres_msg)
+        print("thresholds published")
 
     def image_callback(self, img):
         # print("image callback")
@@ -308,7 +321,6 @@ class Ui_MainWindow(object):
         # initialize ros connection and start subscriber
         self.ros_init()
 
-
     def connect_signals(self):
         # Sliders
         self.horizontalSlider.valueChanged.connect(self.slider_1_changed)
@@ -392,7 +404,6 @@ class Ui_MainWindow(object):
         print("Slider 6 changed")
         print(value)
 
-
     def radio_button_update(self):
         if self.radioButton.isChecked():
             self.calibrate_color = "Brown"
@@ -403,7 +414,9 @@ class Ui_MainWindow(object):
         print(self.calibrate_color)
 
     def ok_button_clicked(self):
+        self.ros_publish_thresholds()
         self.show_popup()
+
     def show_popup(self):
         msg = QMessageBox()
         msg.setWindowTitle("Thresholds calibration")
@@ -415,11 +428,12 @@ class Ui_MainWindow(object):
 
         msg.setDetailedText("details")
 
-        msg.buttonClicked.connect(self.popup_button)
+        # msg.buttonClicked.connect(self.popup_button)
         x = msg.exec_()
 
     def popup_button(self, i):
         print(i.text())
+
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
