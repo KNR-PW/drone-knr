@@ -34,3 +34,12 @@ Lastly, reload the path (log-out and log-in to make permanent):
 ## Run Simulation
 
 In order to run the simulator, look  into [Simulation package documenation](/src/simulation/)
+
+## Run Detector
+
+In order to run the detector, look  into [Detector package documenation](/src/drone_detector/)
+
+## Run Detector GUI
+
+In order to run the detector GUI, look  into [GUI package documenation](/src/drone_gui/)
+
