@@ -10,7 +10,7 @@ Install PyQt5
 ```shell
 pip3 install pyqt5
 ```
-
+**Make sure you have a properly installed [Detector Package](https://github.com/KNR-PW/drone-knr/tree/detector_devel/src/drone_detector) before running GUI**
 
 
 ## Usage
