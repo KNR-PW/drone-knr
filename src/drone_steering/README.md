@@ -44,6 +44,11 @@ print("System status: %s" % vehicle.system_status.state)
 print("Mode: %s" % vehicle.mode.name)
 ```
 
+## In case of losing your drone
+
+Type this in console:
+To come back home `mode rtl`, to land `mode land`
+
 ## To run python code
 
 Replace `collections.MutableMapping` by `collections.abc.MutableMapping` (in the `dronekit/__init__.py` file).
