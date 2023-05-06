@@ -37,7 +37,6 @@ setup(
             "image_subscriber=drone_detector.image_subscriber:main",
             "detector=drone_detector.detector:main",
             "detection_subscriber=drone_detector.detection_subscriber:main",
-            "detector_gui=drone_detector.detector_gui:main",
         ],
     },
 )

@@ -11,8 +11,4 @@ def generate_launch_description():
             package='drone_detector',
             executable='detection_subscriber',
         ),
-        Node(
-            package='drone_gui',
-            executable='detector_gui',
-        ),
     ])
