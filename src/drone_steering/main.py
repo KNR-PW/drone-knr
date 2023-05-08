@@ -1,4 +1,4 @@
-from _future_ import print_function
+from __future__ import print_function
 
 from dronekit import connect, VehicleMode, LocationGlobal, LocationGlobalRelative
 from pymavlink import mavutil # Needed for command message definitions
@@ -24,7 +24,7 @@ if not connection_string:
 
 # connect to vehicle
 print("connecting to vehicle on: %s" % connection_string)
-vehicle = connect(connection_string, wait_ready=True)
+vehicle = connect(connection_string, wait_ready=True) #wont work with true
 
 # ========================= funkcje wrzucone ========================
 
@@ -33,12 +33,13 @@ vehicle = connect(connection_string, wait_ready=True)
 
 # wspolrzedne do tej funkcji musza byc podane w ten sposob:
 # a_location = LocationGlobalRelative(-21, 37, 69)
-def travel_to_point(coordinates):
+
+def crusade(coordinates):
     # mozna se ustawic albo ground albo airspeed
     groundspeed = 10
 
     # NORTH, EAST, DOWN
-    goto(coordinates[0], coordinates[1], goto_position_target_global_int)
+    goto(coordinates.lat, coordinates.lon, goto_position_target_global_int)
     strzelansko()
 
 
@@ -139,11 +140,39 @@ def goto_position_target_local_ned(north, east, down):
     # send command to vehicle
     vehicle.send_mavlink(msg)
 
+def goto(dNorth, dEast, gotoFunction=vehicle.simple_goto):
+    """
+    Moves the vehicle to a position dNorth metres North and dEast metres East of the current position.
+
+    The method takes a function pointer argument with a single `dronekit.lib.LocationGlobal` parameter for 
+    the target position. This allows it to be called with different position-setting commands. 
+    By default it uses the standard method: dronekit.lib.Vehicle.simple_goto().
+
+    The method reports the distance to target every two seconds.
+    """
+    
+    currentLocation = vehicle.location.global_relative_frame
+    targetLocation = get_location_metres(currentLocation, dNorth, dEast)
+    targetDistance = get_distance_metres(currentLocation, targetLocation)
+    gotoFunction(targetLocation)
+    
+    #print "DEBUG: targetLocation: %s" % targetLocation
+    #print "DEBUG: targetLocation: %s" % targetDistance
+
+    while vehicle.mode.name=="GUIDED": #Stop action if we are no longer in guided mode.
+        #print "DEBUG: mode: %s" % vehicle.mode.name
+        remainingDistance=get_distance_metres(vehicle.location.global_relative_frame, targetLocation)
+        print("Distance to target: ", remainingDistance)
+        if remainingDistance<=targetDistance*0.01: #Just below target, in case of undershoot.
+            print("Reached target")
+            break;
+        time.sleep(2)
+
 arm_and_takeoff(5)
 
 coord1 = LocationGlobalRelative(-21, 37, 69)
 
-travel_to_point(coord1)
+crusade(coord1)
 
 print("Setting LAND mode...")
 vehicle.mode = VehicleMode("LAND")
