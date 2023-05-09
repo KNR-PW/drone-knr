@@ -45,6 +45,8 @@ def crusade(coordinates):
 
 def strzelansko():
     # tu wrzucic dzialanie zwiazane z zestrzeliwywaniem kolka etc
+    print("Pew pew pew")
+    print("")
     pass
 
 def arm_and_takeoff(aTargetAltitude):
@@ -83,7 +85,7 @@ def arm_and_takeoff(aTargetAltitude):
 
     return None
 
-# w globalnym ukladzie wspolrzednych
+# in global coordinate system
 def goto_position_target_global_int(aLocation):
     """
     Send SET_POSITION_TARGET_GLOBAL_INT command to request the vehicle fly to a specified LocationGlobal.
@@ -109,6 +111,50 @@ def goto_position_target_global_int(aLocation):
     # send command to vehicle
     vehicle.send_mavlink(msg)
 
+
+def get_location_metres(original_location, dNorth, dEast):
+    """
+    Returns a LocationGlobal object containing the latitude/longitude `dNorth` and `dEast` metres from the 
+    specified `original_location`. The returned LocationGlobal has the same `alt` value
+    as `original_location`.
+
+    The function is useful when you want to move the vehicle around specifying locations relative to 
+    the current vehicle position.
+
+    The algorithm is relatively accurate over small distances (10m within 1km) except close to the poles.
+
+    For more information see:
+    http://gis.stackexchange.com/questions/2951/algorithm-for-offsetting-a-latitude-longitude-by-some-amount-of-meters
+    """
+    earth_radius = 6378137.0 #Radius of "spherical" earth
+    #Coordinate offsets in radians
+    dLat = dNorth/earth_radius
+    dLon = dEast/(earth_radius*math.cos(math.pi*original_location.lat/180))
+
+    #New position in decimal degrees
+    newlat = original_location.lat + (dLat * 180/math.pi)
+    newlon = original_location.lon + (dLon * 180/math.pi)
+    if type(original_location) is LocationGlobal:
+        targetlocation=LocationGlobal(newlat, newlon,original_location.alt)
+    elif type(original_location) is LocationGlobalRelative:
+        targetlocation=LocationGlobalRelative(newlat, newlon,original_location.alt)
+    else:
+        raise Exception("Invalid Location object passed")
+        
+    return targetlocation
+
+def get_distance_metres(aLocation1, aLocation2):
+    """
+    Returns the ground distance in metres between two LocationGlobal objects.
+
+    This method is an approximation, and will not be accurate over large distances and close to the 
+    earth's poles. It comes from the ArduPilot test code: 
+    https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
+    """
+
+    dlat = aLocation2.lat - aLocation1.lat 
+    dlong = aLocation2.lon - aLocation1.lon
+    return math.sqrt((dlat*dlat) + (dlong*dlong)) * 1.113195e5
 
 # w ukladzie wspolrzednych tak jak sie podaje ogolem na swiecie
 # to sie moze przydać jakby nam kamera zwracała wspolrzedne z gps
@@ -170,19 +216,19 @@ def goto(dNorth, dEast, gotoFunction=vehicle.simple_goto):
 
 arm_and_takeoff(5)
 
-coord1 = LocationGlobalRelative(-21, 37, 69)
+coord1 = LocationGlobalRelative(-35.3636, 149.1630, 5)
 
 crusade(coord1)
 
-print("Setting LAND mode...")
-vehicle.mode = VehicleMode("LAND")
+# print("Setting LAND mode...")
+# vehicle.mode = VehicleMode("LAND")
 
-# na koniec
-print("Close vehicle object")
-vehicle.close()
+# # na koniec
+# print("Close vehicle object")
+# vehicle.close()
 
-# zgaszenie symulatora
-if sitl is not None:
-    sitl.stop()
+# # zgaszenie symulatora
+# if sitl is not None:
+#     sitl.stop()
 
-print("completed")
+# print("completed")
