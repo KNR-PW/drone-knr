@@ -22,6 +22,8 @@ And to run Gazebo
 
 `ign gazebo -r -v 1 tree_of_life.sdf`
 
+And then you can run `arm_test.py` from VSCode, the drone should fly a path to 3 points
+
 ## To setup a RPi for running this code
 
 ```bash
