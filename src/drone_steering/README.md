@@ -10,11 +10,11 @@ It's best to just run this by console, running this in VSCode doesn't open conso
 
 `sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --map --console`
 
-Then, open a second console window and run this
+Then, open a second console window and run this (replace the path to drone_sim/build with your path)
 
 `export IGN_GAZEBO_SYSTEM_PLUGIN_PATH=$HOME/KNR/drone-knr/src/simulation/drone_sim/build:$IGN_GAZEBO_SYSTEM_PLUGIN_PATH`
 
-And then this
+And then this (replace the path to drone_sim/build with your path)
 
 `export IGN_GAZEBO_RESOURCE_PATH=$HOME/KNR/drone-knr/src/simulation/drone_sim/models:$HOME/KNR/drone-knr/src/simulation/drone_sim/worlds:$IGN_GAZEBO_RESOURCE_PATH`
 
