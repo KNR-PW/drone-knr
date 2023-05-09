@@ -1,8 +1,28 @@
 # KNR-drone-coding
 
- This is an autonomous drone project dedicated to controlling a quadcopter in sitl simulator or irl
+This is an autonomous drone project dedicated to controlling a quadcopter in sitl simulator or irl
 
-To setup the RPi:
+To run navigational code in SITL on your computer
+
+Replace `collections.MutableMapping` by `collections.abc.MutableMapping` (in the `dronekit/__init__.py` file).
+
+It's best to just run this by console, running this in VSCode doesn't open console for some reason
+
+`sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --map --console`
+
+Then, open a second console window and run this
+
+`export IGN_GAZEBO_SYSTEM_PLUGIN_PATH=$HOME/KNR/drone-knr/src/simulation/drone_sim/build:$IGN_GAZEBO_SYSTEM_PLUGIN_PATH`
+
+And then this
+
+`export IGN_GAZEBO_RESOURCE_PATH=$HOME/KNR/drone-knr/src/simulation/drone_sim/models:$HOME/KNR/drone-knr/src/simulation/drone_sim/worlds:$IGN_GAZEBO_RESOURCE_PATH`
+
+And to run Gazebo
+
+`ign gazebo -r -v 1 tree_of_life.sdf`
+
+## To setup a RPi for running this code
 
 ```bash
 sudo apt-get update
@@ -25,9 +45,7 @@ if ttyAMA0 isn't in /dev, `enable_uart=1` in `/boot/config`
 
 The rest of setup is via code:
 
-```bash
-dronekit-sitl copter
-```
+`dronekit-sitl copter`
 
 `python arm_test.py --connect /dev/ttyAMAO` - run the script to fly irl
 
@@ -48,7 +66,3 @@ print("Mode: %s" % vehicle.mode.name)
 
 Type this in console:
 To come back home `mode rtl`, to land `mode land`
-
-## To run python code
-
-Replace `collections.MutableMapping` by `collections.abc.MutableMapping` (in the `dronekit/__init__.py` file).
