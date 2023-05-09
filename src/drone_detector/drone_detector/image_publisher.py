@@ -10,6 +10,7 @@ from rclpy.node import Node  # Handles the creation of nodes
 from sensor_msgs.msg import Image  # Image is the message type
 from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Images
 import cv2  # OpenCV library
+import os
 
 
 class ImagePublisher(Node):
@@ -41,6 +42,9 @@ class ImagePublisher(Node):
 
         # Used to convert between ROS and OpenCV images
         self.br = CvBridge()
+        print(os.path.dirname(__file__))
+
+
 
     def timer_callback(self):
         """
