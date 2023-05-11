@@ -37,6 +37,7 @@ class ImagePublisher(Node):
 
         # Create a VideoCapture object
         # The argument '0' gets the default webcam.
+        
         self.cap = cv2.VideoCapture(
             "/home/stas/Dron/KNRDron/rosDron/install/drone_detector/lib/drone_detector/car_counting.mp4")
 
@@ -55,15 +56,21 @@ class ImagePublisher(Node):
         # This method returns True/False as well
         # as the video frame.
         ret, frame = self.cap.read()
+        
 
         if ret == True:
             # Publish the image.
             # The 'cv2_to_imgmsg' method converts an OpenCV
             # image to a ROS 2 image message
+            frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
             self.publisher_.publish(self.br.cv2_to_imgmsg(frame))
 
             # Display the message on the console
             self.get_logger().info('Publishing video frame')
+        else:
+            self.cap.release()
+            self.cap = cv2.VideoCapture(
+            "/home/stas/Dron/KNRDron/rosDron/install/drone_detector/lib/drone_detector/car_counting.mp4")
 
 
 def main(args=None):

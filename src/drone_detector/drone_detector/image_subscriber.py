@@ -47,7 +47,7 @@ class ImageSubscriber(Node):
     # Display image
     cv2.imshow("camera", current_frame)
     
-    # cv2.waitKey(1)
+    cv2.waitKey(1)
   
 def main(args=None):
   
