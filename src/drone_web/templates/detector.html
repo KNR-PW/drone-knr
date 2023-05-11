@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Detector - Character NFT template</title>
+    <title>KNR Drone website</title>
     <meta property="og:title" content="Detector - Character NFT template" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta charset="utf-8" />
@@ -166,11 +166,15 @@
               <span></span>
             </span>
             <div class="detector-btn-group1">
-              <button class="detector-load-img-button button">
-                Load Image
+              <form action="/detector.html" method="post">
+                <input type="hidden" name="button_name" value="img_button" />
+                <button class="detector-load-img-button button" type="submit">
+                  Load Image
               </button>
-
-              <button class="detector-load-det-button button">
+              </form>
+              <form action="/detector.html" method="post">
+                <input type="hidden" name="button_name" value="img_det_button" />
+              <button class="detector-load-det-button button" type="submit">
                 <span>
                   <span class="detector-text16">
                     Load Image with detections
@@ -178,10 +182,11 @@
                   <br />
                 </span>
               </button>
+              </form>
             </div>
           </div>
           <img
-            src="./static/slonecznik.jpg"
+            src="{{img_jpg}}"
             alt="image"
             class="detector-camera"
           />
