@@ -1,4 +1,3 @@
-# latanie irl
 from __future__ import print_function
 from dronekit import connect, VehicleMode, LocationGlobal, LocationLocal, LocationGlobalRelative, APIException
 import time
@@ -98,7 +97,7 @@ def arm_and_takeoff(aTargetAltitude):
 # vehicle.location.global_relative_frame
 
 # coordinates for this function need to be passed like this:
-# a_location = LocationGlobalRelative(-21, 37, 69)
+# a_location = LocationGlobalRelative(-5, 5, -5)
 
 
 
@@ -230,6 +229,7 @@ def main():
     #     time.sleep(1)
 
 
+    # NED coordinates - north, east, down
     pos_change(10,0,0)
     pos_change(-5,-5,-1)
 
