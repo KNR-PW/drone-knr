@@ -10,8 +10,8 @@ import os
 from threading import Event
 from drone_interfaces.msg import DetectionMsg, DetectionsList
 
-
 dir_path = os.path.dirname(__file__)
+
 
 class CameraNode(Node):
     """
@@ -33,6 +33,7 @@ class CameraNode(Node):
         self.br = CvBridge()
         self.detections = []
         self.frame = 0
+        self.detections_list = []
         self.get_logger().info('Web Camera node created')
 
     def image_callback(self, frame):
@@ -41,12 +42,14 @@ class CameraNode(Node):
         frame = self.br.imgmsg_to_cv2(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-        
+
         if os.path.exists(dir_path + "/static/ros_frame.jpg"):
             os.remove(dir_path + "/static/ros_frame.jpg")
         cv2.imwrite(dir_path + "/static/ros_frame.jpg", frame)
         self.frame = frame
+
     def detection_callback(self, detections):
+        self.detections_list = detections.detections_list
         for det in detections.detections_list:
             x, y, w, h = det.bounding_box
             cv2.rectangle(self.frame, (x, y),
@@ -57,10 +60,21 @@ class CameraNode(Node):
         if len(detections.detections_list):
             cv2.imwrite(dir_path + "/static/ros_det_frame.jpg", self.frame)
 
+    def get_detections_strings(self):
+        # Function returns list of string descriptions of detections
+        det_num = 1
+        detections_strings = []
+        for det in self.detections_list:
+            det_str = "Det " + str(det_num) + ":         "
+            temp = "Color: " + str(det.color_name) + ",  " + "Bounding Box: " + str(
+                det.bounding_box) + " , " + "GPS Position: " + str(det.gps_position)
+            det_str += temp
+            detections_strings.append(det_str)
+            det_num += 1
+        return detections_strings
+
     def get_frame(self):
         return self.frame
-
-        
 
 
 rclpy.init(args=None)
@@ -70,37 +84,38 @@ ros_node = CameraNode()
 app = Flask(__name__)
 
 
-
-
 @app.route('/')
 @app.route('/index.html')
 def index():
     now = datetime.datetime.now()
     timeString = now.strftime("%Y-%m-%d %H:%M:%S")
-    print("dupa")
     return render_template('index.html')
-
-
 
 
 @app.route('/detector.html', methods=['GET', 'POST'])
 def detector():
     img_path = ""
+    detections_strings = ["No detections"]
     if request.method == 'POST':
         rclpy.spin_once(ros_node, timeout_sec=1)
+
         button_name = request.form.get("button_name")
         if button_name == 'img_button':
             img_path = "./static/ros_frame.jpg"
+
         if button_name == 'img_det_button':
             img_path = "./static/ros_det_frame.jpg"
-    
-    return render_template('detector.html', img_jpg=img_path)
 
+        if button_name == 'load_detections':
+            detections_strings = ros_node.get_detections_strings()
+
+    return render_template('detector.html', img_jpg=img_path, detections_strings=detections_strings)
 
 
 def main():
     print(os.path.dirname(__file__))
     app.run(debug=True, host='0.0.0.0')
+
 
 if __name__ == '__main__':
     main()

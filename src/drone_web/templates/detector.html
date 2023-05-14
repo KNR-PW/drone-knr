@@ -198,8 +198,32 @@
               <br />
               <br />
             </h1>
-            <button class="detector-button4 button">Load Detections</button>
+            <form action="/detector.html" method="post">
+              <input type="hidden" name="button_name" value="load_detections" />
+              <button class="detector-button4 button" type="submit">
+                Load Detections
+            </button>
+            </form>
           </div>
+          <ul class="detector-detection-list list">
+            {% for det_string in detections_strings %} 
+              <li class="list-item"><span class="detector-text23">{{ det_string }}</span></li> 
+            {% endfor %} 
+            <!-- <li class="detector-det list-item">
+              <span class="detector-text22">Text</span>
+            </li>
+            <li class="list-item"><span class="detector-text23">Text</span></li>
+            <li class="list-item"><span class="detector-text24">Text</span></li>
+            <li class="list-item"><span class="detector-text25">Text</span></li>
+            <li class="list-item"><span class="detector-text26">Text</span></li>
+            <li class="list-item"><span class="detector-text27">Text</span></li>
+            <li class="detector-det5 list-item">
+              <span class="detector-text28">Text</span>
+            </li>
+            <li class="detector-det6 list-item">
+              <span class="detector-text29">Text</span>
+            </li> -->
+          </ul>
         </div>
       </div>
     </div>
