@@ -14,9 +14,6 @@ global vehicle # CANNOT BE THAT WAY
 
 class DroneMission:
     def __init__(self):
-        # self.length = length
-        # self.width = width
-
         # connecting
 
         parser = argparse.ArgumentParser(description='commands')
@@ -40,9 +37,8 @@ class DroneMission:
         return None
 
 
-
     def __str__(self):
-        return f"Mission length: {self.length}, mission width: {self.width}"
+        return None
     
     
     def arm_and_takeoff(self, aTargetAltitude):
@@ -80,35 +76,77 @@ class DroneMission:
             time.sleep(1)
 
         return None
+    
+
+    def goto_position_target_local_ned(self, north, east, down):
+        msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
+            0,       # time_boot_ms (not used)
+            0, 0,    # target system, target component
+            mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
+            0b0000111111111000, # type_mask (only positions enabled)
+            north, east, down, # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
+            0, 0, 0, # x, y, z velocity in m/s  (not used)
+            0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
+            0, 0)    # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
 
 
-    # def create_map(self):
+    def pos_change(self, north, east, down):
+
+        while not self.vehicle.gps_0.fix_type:
+            print("waiting for positional info")
+            time.sleep(1)
+
+        # Get the vehicle's current position in the local frame of reference
+        current_location = self.vehicle.location.local_frame
+
+        next_location = LocationLocal
+
+        next_location.north = current_location.north + north
+        next_location.east = current_location.east + east
+        next_location.down = current_location.down + down
+
+        self.goto_position_target_local_ned(next_location.north, next_location.east, next_location.down)
         
-    #     map = np.empty((self.length, self.width, 2)) #2 bo muszą być 2 współrzędne
+        while self.vehicle.mode == "GUIDED":
+            remaining_distance = get_distance_metres_ned(self.vehicle.location.local_frame, next_location)
+            if remaining_distance <= 1:
+                print("Reached target waypoint")
+                break
+            time.sleep(1)
 
-    #     for i in range(self.length):
-    #         for j in range(self.width):
-    #                 map[i][j][0] = i*4 # because they're 4m apart
-    #                 map[i][j][1] = j*4
+        # Get the vehicle's current position in the local frame of reference
+        current_location = self.vehicle.location.local_frame
 
-    #     for i in range(self.length):
-    #         for j in range(self.width):
-    #                 print("x: ", map[i][j][0], ", y: ", map[i][j][1])
-    #     #probably third attribute about health
+        # Print the position
+        print('Current position (local frame): {}'.format(current_location))
+    
+    
+# spits out the distance between two given points in global frame
+def get_distance_metres(aLocation1, aLocation2):
+    dlat = aLocation2.lat - aLocation1.lat 
+    dlong = aLocation2.lon - aLocation1.lon
+    return math.sqrt((dlat*dlat) + (dlong*dlong)) * 1.113195e5
 
 
-    def detection(self):
-        pass
-
+# spits out the distance between two given points in local frame
+def get_distance_metres_ned(aLocation1, aLocation2):
+    dnorth = aLocation2.north - aLocation1.north
+    deast = aLocation2.east - aLocation1.east
+    return math.sqrt((dnorth*dnorth) + (deast*deast))
 
 
 def main():
     drone = DroneMission()
-    # drone.create_map()
 
     drone.arm_and_takeoff(10)
-    
 
+    drone.pos_change(10,0,0)
+    drone.pos_change(-5,-5,-1)
+
+    print("End of script.")
+    
     # TODO na ten moment by się przydało napisać funkcje takie które mogą się przydać do oblatywania drona
     #   chyba spoko byłoby zmontować wstępny sposób nadlatywania nad grupy drzew
 

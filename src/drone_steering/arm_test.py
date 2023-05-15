@@ -101,16 +101,8 @@ def arm_and_takeoff(aTargetAltitude):
 
 
 
-# spits out the distance between two given points
+# spits out the distance between two given points in global coordinate frame
 def get_distance_metres(aLocation1, aLocation2):
-    """
-    Returns the ground distance in metres between two LocationGlobal objects.
-
-    This method is an approximation, and will not be accurate over large distances and close to the 
-    earth's poles. It comes from the ArduPilot test code: 
-    https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
-    """
-
     dlat = aLocation2.lat - aLocation1.lat 
     dlong = aLocation2.lon - aLocation1.lon
     return math.sqrt((dlat*dlat) + (dlong*dlong)) * 1.113195e5
@@ -122,24 +114,8 @@ def get_distance_metres_ned(aLocation1, aLocation2):
     return math.sqrt((dnorth*dnorth) + (deast*deast))
  
 
-# in global coordinate system, like you'd typically give someone coordinates
-# could be useful if our camera gave us coordinates in 'gps' style
+# in global coordinate system
 def goto_position_target_local_ned(north, east, down):
-    """
-    Send SET_POSITION_TARGET_LOCAL_NED command to request the vehicle fly to a specified
-    location in the North, East, Down frame.
-
-    It is important to remember that in this frame, positive altitudes are entered as negative
-    "Down" values. So if down is "10", this will be 10 metres below the home altitude.
-
-    Starting from AC3.3 the method respects the frame setting. Prior to that the frame was
-    ignored. For more information see:
-    http://dev.ardupilot.com/wiki/copter-commands-in-guided-mode/#set_position_target_local_ned
-
-    See the above link for information on the type_mask (0=enable, 1=ignore).
-    At time of writing, acceleration and yaw bits are ignored.
-
-    """
     msg = vehicle.message_factory.set_position_target_local_ned_encode(
         0,       # time_boot_ms (not used)
         0, 0,    # target system, target component
@@ -170,20 +146,13 @@ def pos_change(north, east, down):
     next_location.down = current_location.down + down
 
     goto_position_target_local_ned(next_location.north, next_location.east, next_location.down)
-    # goto_position_target_local_ned(
-    #     vehicle.location.local_frame.north+north,
-    #      vehicle.location.local_frame.east+east, 
-    #      vehicle.location.local_frame.down+down)
     
-
     while vehicle.mode == "GUIDED":
         remaining_distance = get_distance_metres_ned(vehicle.location.local_frame, next_location)
         if remaining_distance <= 1:
             print("Reached target waypoint")
             break
         time.sleep(1)
-
-
 
     # Get the vehicle's current position in the local frame of reference
     current_location = vehicle.location.local_frame
@@ -210,11 +179,9 @@ def main():
     #         break
     #     time.sleep(1)
 
-
     # NED coordinates - north, east, down
     pos_change(10,0,0)
     pos_change(-5,-5,-1)
-
 
     print("End of script.")
 
