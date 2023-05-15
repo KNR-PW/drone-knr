@@ -126,6 +126,13 @@ class DroneMission:
     def goto_position_ned(self, coord = LocationLocal):
         self.goto_position_target_local_ned(coord.north, coord.east, coord.down)
 
+        while self.vehicle.mode == "GUIDED":
+            remaining_distance = get_distance_metres_ned(self.vehicle.location.local_frame, coord)
+            if remaining_distance <= 1:
+                print("Reached target waypoint")
+                break
+            time.sleep(1)
+
 
     def next_circle(self, circle_pos = LocationLocal):
         pass
@@ -156,15 +163,18 @@ def main():
 
     coord1 = LocationLocal
     coord1.north = 9
-    coord1.east = -14
+    coord1.east = 0
     coord1.down = -15
 
     drone.goto_position_ned(coord1)
 
+    drone.pos_change(0,-14,0)
+
+    drone.pos_change(28, 0, 0)
+    drone.pos_change(0, 28, 0)
+
     print("End of script.")
-    
-    # TODO na ten moment by się przydało napisać funkcje takie które mogą się przydać do oblatywania drona
-    #   chyba spoko byłoby zmontować wstępny sposób nadlatywania nad grupy drzew
+
 
 
 if __name__ == "__main__":
