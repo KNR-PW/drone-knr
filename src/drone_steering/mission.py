@@ -121,6 +121,14 @@ class DroneMission:
 
         # Print the position
         print('Current position (local frame): {}'.format(current_location))
+
+
+    def goto_position_ned(self, coord = LocationLocal):
+        self.goto_position_target_local_ned(coord.north, coord.east, coord.down)
+
+
+    def next_circle(self, circle_pos = LocationLocal):
+        pass
     
     
 # spits out the distance between two given points in global frame
@@ -142,8 +150,16 @@ def main():
 
     drone.arm_and_takeoff(10)
 
-    drone.pos_change(10,0,0)
-    drone.pos_change(-5,-5,-1)
+
+    # drone.pos_change(5,-22,0)
+    # drone.pos_change(-5,-5,-1)
+
+    coord1 = LocationLocal
+    coord1.north = 9
+    coord1.east = -14
+    coord1.down = -15
+
+    drone.goto_position_ned(coord1)
 
     print("End of script.")
     
