@@ -7,6 +7,7 @@ import socket
 import math
 import argparse
 from pymavlink import mavutil # Needed for command message definitions
+import cv2
 
 
 global vehicle # CANNOT BE THAT WAY
@@ -15,6 +16,8 @@ global vehicle # CANNOT BE THAT WAY
 class DroneMission:
     def __init__(self):
         # connecting
+
+        self.detections=list()
 
         parser = argparse.ArgumentParser(description='commands')
         parser.add_argument('--connect', default='127.0.0.1:14550')
@@ -136,8 +139,42 @@ class DroneMission:
 
     def next_circle(self, circle_pos = LocationLocal):
         pass
+
+
+    def det2pos(self):
+
+        img_res=np.array((640,480))
+        
+        detection=np.array((245,23))
+        detection=detection-img_res/2
+        detection[1]=-detection[1]
+
+        HFOV=math.radians(62.2)
+        VFOV=math.radians(48.8)
+
+        drone_pos = np.array((self.vehicle.location.local_frame.north,self.vehicle.location.local_frame.east))
+        drone_yaw = self.vehicle.attitude.yaw
+        drone_amplitude = -self.vehicle.location.local_frame.down
+
+        cam_range=(math.tan(HFOV)*drone_amplitude,math.tan(VFOV)*drone_amplitude)
+
+        target_pos_rel=np.multiply(np.divide(detection, img_res), cam_range)
+
+        self.detections.append(drone_pos+np.matmul(Rot(drone_yaw), target_pos_rel))
+
+
+        # ekf origin czy home
+
+
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
     
     
+def Rot(yaw):
+        yaw = math.radians(yaw)
+        res = np.matrix([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
+        return res
+
 # spits out the distance between two given points in global frame
 def get_distance_metres(aLocation1, aLocation2):
     dlat = aLocation2.lat - aLocation1.lat 
