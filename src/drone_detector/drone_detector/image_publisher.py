@@ -69,6 +69,7 @@ class ImagePublisher(Node):
         else:
             self.cap.release()
             self.cap = cv2.VideoCapture(0)
+            a = 0
 
 
 def main(args=None):
