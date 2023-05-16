@@ -38,8 +38,7 @@ class ImagePublisher(Node):
         # Create a VideoCapture object
         # The argument '0' gets the default webcam.
         
-        self.cap = cv2.VideoCapture(
-            "/home/stas/Dron/KNRDron/rosDron/install/drone_detector/lib/drone_detector/car_counting.mp4")
+        self.cap = cv2.VideoCapture(0)
 
         # Used to convert between ROS and OpenCV images
         self.br = CvBridge()
@@ -69,8 +68,7 @@ class ImagePublisher(Node):
             self.get_logger().info('Publishing video frame')
         else:
             self.cap.release()
-            self.cap = cv2.VideoCapture(
-            "/home/stas/Dron/KNRDron/rosDron/install/drone_detector/lib/drone_detector/car_counting.mp4")
+            self.cap = cv2.VideoCapture(0)
 
 
 def main(args=None):

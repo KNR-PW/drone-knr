@@ -5,7 +5,7 @@ from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Imag
 import cv2  # OpenCV library
 import numpy as np
 # from detection import Detection
-from drone_interfaces.msg import DetectionMsg, DetectionsList
+from drone_interfaces.msg import DetectionMsg, DetectionsList # , GPSPos
 from std_msgs.msg import Int32MultiArray
 
 
@@ -55,11 +55,13 @@ class Detector(Node):
         timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
+        # self.gps_subscription = self.create_subscription(GPSPos, "gps_position", self.gps_callback, 10)
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
+        self.gps_position = (0, 0)
         # self.detection_msg = Detection()
         self.detections_list_msg = DetectionsList()
         self.get_logger().info('Detector node created')
@@ -115,6 +117,8 @@ class Detector(Node):
 
         self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
 
+    def gps_callback(self, pos):
+        self.gps_position = pos.gps_position
 
 def main(args=None):
     rclpy.init(args=args)
