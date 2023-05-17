@@ -56,6 +56,7 @@ class DetectorServer(Node):
         # self.detection_msg = Detection()
         self.detections_list_msg = DetectionsList()
         self.video_capture = cv2.VideoCapture(0)
+        _, self.frame = self.video_capture.read()
         self.get_logger().info('DetectorServer node created')
 
     def detect_trees_callback(self, request, response):

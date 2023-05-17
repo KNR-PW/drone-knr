@@ -44,10 +44,11 @@ class DetectionClient(Node):
         while not self.det_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('detect_trees service not available, waiting again...')
         self.req = DetectTrees.Request()
+        self.get_logger().info('DetectionClient node created')
 
     def send_request(self, info=0):
         self.req.request_info = info
-        self.future = self.cli.call_async(self.req)
+        self.future = self.det_cli.call_async(self.req)
         rclpy.spin_until_future_complete(self, self.future)
         print("client recieved response:")
         print(self.future.result().detections_list)
