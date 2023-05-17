@@ -46,7 +46,7 @@ class DetectorServer(Node):
                                                                 10)
 
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
-
+        self.publisher = self.create_publisher(Image, 'camera', 10)
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
                            "beige": (np.array([60, 0, 0]), np.array([177, 20, 50])),
@@ -97,6 +97,7 @@ class DetectorServer(Node):
         ret, frame = self.video_capture.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
+        self.publisher.publish(self.br.cv2_to_imgmsg(frame))
 
     def detections_to_msg(self):
         temp_detection_list_msg = DetectionsList()
