@@ -6,6 +6,7 @@ import cv2  # OpenCV library
 import numpy as np
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
+from drone_interfaces.srv import DetectTrees
 from std_msgs.msg import Int32MultiArray
 
 
@@ -35,31 +36,38 @@ class Detection:
         pass
 
 
-class Detector(Node):
+class DetectorServer(Node):
 
     def __init__(self):
-        super().__init__('detector')
-        self.subscription = self.create_subscription(
-            Image,
-            'camera',
-            self.listener_callback,
-            10)
+        super().__init__('detector_server')
         self.thresholds_subscription = self.create_subscription(Int32MultiArray,
                                                                 "detector_thresholds",
                                                                 self.thresholds_callback,
                                                                 10)
-        self.publisher = self.create_publisher(DetectionsList, 'detections', 10)
-        timer_period = 0.1
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+
+        self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
 
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
+        self.img_size = (640, 480)
         # self.detection_msg = Detection()
         self.detections_list_msg = DetectionsList()
-        self.get_logger().info('Detector node created')
+        self.video_capture = cv2.VideoCapture(0)
+        _, self.frame = self.video_capture.read()
+        self.get_logger().info('DetectorServer node created')
+
+    def detect_trees_callback(self, request, response):
+        self.get_logger().info('Incoming detection request')
+        self.read_frame()  # TODO
+        self.detection(self.frame)
+        self.detections_to_msg()
+        response.detections_list = self.detections_list_msg
+        self.get_logger().info('Response generated. Found trees: ' + str(len(self.detections)))
+
+        return response
 
     def thresholds_callback(self, msg):
         thres_array = msg.data
@@ -69,16 +77,9 @@ class Detector(Node):
                                 np.array([thres_array[4], thres_array[5], thres_array[6]]))
         print(self.thresholds)
 
-    def listener_callback(self, frame):
+    def detection(self, frame):
         # self.get_logger().info('Receiving video frame and detecting')
         self.detections.clear()
-        # Display the message on the console
-
-        # Convert ROS Image message to OpenCV image
-        frame = self.br.imgmsg_to_cv2(frame)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-        frame = cv2.blur(frame, (10, 10)) 
 
         # Detection
         for col in self.thresholds:
@@ -92,9 +93,10 @@ class Detector(Node):
                     x, y, w, h = cv2.boundingRect(cnt)
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
 
-    def timer_callback(self):
-        self.detections_to_msg()
-        self.publisher.publish(self.detections_list_msg)
+    def read_frame(self):
+        ret, frame = self.video_capture.read()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
 
     def detections_to_msg(self):
         temp_detection_list_msg = DetectionsList()
@@ -117,11 +119,11 @@ class Detector(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    detector = Detector()
+    detector_server = DetectorServer()
 
-    rclpy.spin(detector)
+    rclpy.spin(detector_server)
 
-    detector.destroy_node()
+    detector_server.destroy_node()
 
     rclpy.shutdown()
 
