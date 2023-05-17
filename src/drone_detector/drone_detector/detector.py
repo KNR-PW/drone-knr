@@ -36,9 +36,6 @@ class Detection:
 
 
 class Detector(Node):
-    """
-    Create an ImagePublisher class, which is a subclass of the Node class.
-    """
 
     def __init__(self):
         super().__init__('detector')
