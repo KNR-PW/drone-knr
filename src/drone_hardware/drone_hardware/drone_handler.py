@@ -1,5 +1,6 @@
 import rclpy
 from dronekit import connect, VehicleMode, LocationLocal, LocationGlobalRelative
+from pymavlink import mavutil
 
 import argparse
 import time
@@ -69,6 +70,34 @@ class DroneHandler(Node):
         self.get_logger().info("Vehicle is now armed.")
         self.get_logger().info("props are spinning!")
         self.state = "OK"
+    
+    def takeoff(self, altitude):
+        self.state = "OK"
+        self.vehicle.simple_takeoff(altitude)
+
+        # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
+        #  after Vehicle.simple_takeoff will execute immediately).
+        while True:
+            self.get_logger().info(f"Altitude: {self.vehicle.location.global_relative_frame.alt}")
+            if self.vehicle.location.global_relative_frame.alt >= altitude * 0.97:  # Trigger just below target alt.
+                self.get_logger().info("Reached target altitude")
+                break
+            time.sleep(1)
+        self.state = "OK"
+
+    def goto_position_target_local_ned(self, north, east, down):
+        msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
+            0,       # time_boot_ms (not used)
+            0, 0,    # target system, target component
+            mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
+            0b0000111111111000, # type_mask (only positions enabled)
+            north, east, down, # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
+            0, 0, 0, # x, y, z velocity in m/s  (not used)
+            0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
+            0, 0)    # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+
     
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.current_destination_rel.north
