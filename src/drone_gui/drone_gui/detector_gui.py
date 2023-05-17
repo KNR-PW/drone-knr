@@ -86,10 +86,8 @@ class Ui_MainWindow(object):
                 self.label_2.setPixmap(converted_frame)
         # Display thresholded image on label2
         self.frame = self.frame.astype(np.uint8)
-        self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         mask = cv2.inRange(self.frame, np.array([self.R_lower, self.G_lower, self.B_lower]),
                            np.array([self.R_upper, self.G_upper, self.B_upper]))
-        self.frame = cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR)
         masked_frame = cv2.bitwise_and(self.frame, self.frame, mask=mask)
         self.label.setPixmap(self.convert_cv_qt(masked_frame))
 
@@ -112,6 +110,7 @@ class Ui_MainWindow(object):
         print("image callback")
         frame = self.br.imgmsg_to_cv2(img)
         self.got_frame = True
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.frame = frame.astype(np.uint8)
 
     def convert_cv_qt(self, cv_img):

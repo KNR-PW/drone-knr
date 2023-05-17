@@ -43,7 +43,8 @@ class ImageSubscriber(Node):
  
     # Convert ROS Image message to OpenCV image
     current_frame = self.br.imgmsg_to_cv2(data)
-    
+    current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2RGB)
+
     # Display image
     cv2.imshow("camera", current_frame)
     

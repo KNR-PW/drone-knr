@@ -81,6 +81,7 @@ class Detector(Node):
         frame = self.br.imgmsg_to_cv2(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
+        frame = cv2.blur(frame, (10, 10)) 
 
         # Detection
         for col in self.thresholds:
@@ -90,7 +91,7 @@ class Detector(Node):
             for cnt in contours:
                 # Calculate area and remove small elements
                 area = cv2.contourArea(cnt)
-                if area > 100:
+                if area > 200:
                     x, y, w, h = cv2.boundingRect(cnt)
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
 
