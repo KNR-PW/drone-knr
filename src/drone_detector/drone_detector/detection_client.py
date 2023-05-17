@@ -62,7 +62,8 @@ def main(args=None):
 
     while True:
         detection_client.send_request()
-        time.sleep(2)
+        print("det requested")
+        time.sleep(1)
 
     detection_client.destroy_node()
 
