@@ -24,7 +24,7 @@ class Ui_MainWindow(object):
         self.disply_width = 640
         self.display_height = 480
         self.br = CvBridge()
-        self.frame = 0
+        self.frame = np.zeros((self.display_height, self.disply_width))
         self.got_frame = False
 
         # Color to calibrate (selected with radio button)
@@ -73,6 +73,7 @@ class Ui_MainWindow(object):
         else:
             print("ros connection failed")
         #     Start timer
+        # 10 FPS
         self.timer.start(100)
 
     def timer_image_update(self):
@@ -84,6 +85,7 @@ class Ui_MainWindow(object):
                 # Display normal image on label
                 self.label_2.setPixmap(converted_frame)
         # Display thresholded image on label2
+        self.frame = self.frame.astype(np.uint8)
         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         mask = cv2.inRange(self.frame, np.array([self.R_lower, self.G_lower, self.B_lower]),
                            np.array([self.R_upper, self.G_upper, self.B_upper]))
@@ -107,10 +109,10 @@ class Ui_MainWindow(object):
         print("thresholds published")
 
     def image_callback(self, img):
-        # print("image callback")
+        print("image callback")
         frame = self.br.imgmsg_to_cv2(img)
         self.got_frame = True
-        self.frame = frame
+        self.frame = frame.astype(np.uint8)
 
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
@@ -141,7 +143,7 @@ class Ui_MainWindow(object):
         self.label_2.setMaximumSize(QtCore.QSize(640, 480))
         self.label_2.setLineWidth(1)
         self.label_2.setText("")
-        self.label_2.setPixmap(QtGui.QPixmap("../../../../../../Downloads/shades 2.png"))
+        self.label_2.setPixmap(QtGui.QPixmap())
         self.label_2.setScaledContents(False)
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
@@ -149,7 +151,7 @@ class Ui_MainWindow(object):
         self.label.setMinimumSize(QtCore.QSize(640, 480))
         self.label.setMaximumSize(QtCore.QSize(640, 480))
         self.label.setText("")
-        self.label.setPixmap(QtGui.QPixmap("../../../../../../Downloads/shades.png"))
+        self.label.setPixmap(QtGui.QPixmap())
         self.label.setScaledContents(False)
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
