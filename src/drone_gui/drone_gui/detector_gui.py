@@ -24,7 +24,7 @@ class Ui_MainWindow(object):
         self.disply_width = 640
         self.display_height = 480
         self.br = CvBridge()
-        self.frame = np.zeros((self.display_height, self.disply_width))
+        self.frame = np.zeros((self.display_height, self.disply_width)).astype(np.uint8)
         self.got_frame = False
 
         # Color to calibrate (selected with radio button)
