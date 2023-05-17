@@ -49,7 +49,7 @@ class DetectorServer(Node):
 
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
-                           "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
+                           "beige": (np.array([60, 0, 0]), np.array([177, 20, 50])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
         self.img_size = (640, 480)
