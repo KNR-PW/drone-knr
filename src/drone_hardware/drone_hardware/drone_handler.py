@@ -1,5 +1,5 @@
 import rclpy
-from dronekit import connect
+from dronekit import connect, VehicleMode
 
 import argparse
 import time
@@ -8,12 +8,22 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.srv import GetYaw
+from drone_interfaces.srv import GetAttitude
 from drone_interfaces.action import GotoPos
 
 class DroneHandler(Node):
     def __init__(self):
         super().__init__('drone_handler')
+
+        ## DECLARE ACTIONS AND SERVICES
+        self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
+        
+        self.goto = ActionServer(
+            self,
+            GotoPos,
+            'goto_pos',
+            self.goto_action
+        )
 
         ##CONNECT TO COPTER
         parser = argparse.ArgumentParser(description='commands')
@@ -35,12 +45,13 @@ class DroneHandler(Node):
         self.get_logger().info("Copter connected, ready to take instructions")
 
         ## ARM COPTER
+        self.vehicle.mode=VehicleMode("GUIDED")
         while self.vehicle.is_armable==False:
             self.get_logger().info("Waiting for vehicle to become armable...")
-            time.sleep(1)
+            time.sleep(5)
         self.get_logger().info("Vehicle is now armable")
 
-        #self.vehicle.armed=True # nie wywala bledow dzieki temu potem
+        self.vehicle.armed=True
         while self.vehicle.armed==False:
             self.get_logger().info("Waiting for drone to become armed...")
             time.sleep(1)
@@ -48,25 +59,32 @@ class DroneHandler(Node):
         self.get_logger().info("Vehicle is now armed.")
         self.get_logger().info("props are spinning!")
 
-        ## DECLARE ACTIONS AND SERVICES
-        self.yaw = self.create_service(
-            GetYaw,
-            'get_yaw_orientation',
-            self.get_yaw_callback)
-        
-        self.goto = ActionServer(
-            self,
-            GotoPos,
-            'goto_pos',
-            self.goto_action
-        )
+    def __del__(self):
+        self.vehicle.mode=VehicleMode("RTL")
+
 
     
-    def get_yaw_callback():
-        pass
+    def get_attitude_callback(self, request, response):
+        response.roll=self.vehicle.attitude.roll
+        response.pitch=self.vehicle.attitude.pitch
+        response.yaw=self.vehicle.attitude.yaw
+        self.get_logger().info(f"Get Attitude service called")
+        self.get_logger().info(f"Roll: {response.roll}")
+        self.get_logger().info(f"Pitch: {response.pitch}")
+        self.get_logger().info(f"Yaw: {response.yaw}")
+        return response
+
     
-    def goto_action():
-        pass
+    def goto_action(self, goal_handle):
+        self.get_logger().info(f'Flying to: lat={goal_handle.request}')
+        self.vehicle.simple_goto()
+
+
+
+        goal_handle.succeed()
+        result=GotoPos.Result()
+        # result.distance = distance
+        return result.roll, result.pitch, result.yaw
 
 
 

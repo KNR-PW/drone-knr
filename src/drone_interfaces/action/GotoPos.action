@@ -2,6 +2,6 @@ int64 x
 int64 y
 int64 z
 ---
-int64 distance
----
 int64 result
+---
+int64 distance
