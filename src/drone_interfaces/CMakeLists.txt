@@ -15,6 +15,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Detection.msg"
   "msg/DetectionsList.msg"
   "srv/GetAttitude.srv"
+  "srv/GetLocationRelative.srv"
   "action/GotoPos.action"
  )
 ament_export_dependencies(rosidl_default_runtime)

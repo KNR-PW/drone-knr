@@ -8,22 +8,27 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.srv import GetAttitude
+from drone_interfaces.srv import GetAttitude, GetLocationRelative
 from drone_interfaces.action import GotoPos
 
 class DroneHandler(Node):
     def __init__(self):
         super().__init__('drone_handler')
 
-        ## DECLARE ACTIONS AND SERVICES
+        ## DECLARE SERVICES
         self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
+        self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
         
+        ## DECLARE ACTIONS
         self.goto = ActionServer(
             self,
             GotoPos,
             'goto_pos',
             self.goto_action
         )
+
+        ## DRONE MEMBER VARIABLES
+        self.state = "BUSY"
 
         ##CONNECT TO COPTER
         parser = argparse.ArgumentParser(description='commands')
@@ -42,9 +47,16 @@ class DroneHandler(Node):
         baud_rate = 57600
 
         self.vehicle = connect(connection_string, baud=baud_rate, wait_ready=False) #doesnt work with wait_ready=True
-        self.get_logger().info("Copter connected, ready to take instructions")
+        self.state = "OK"
+        self.get_logger().info("Copter connected, ready to arm")
 
-        ## ARM COPTER
+
+
+    def __del__(self):
+        self.vehicle.mode=VehicleMode("RTL")
+
+    def arm(self):
+        self.state = "BUSY"
         self.vehicle.mode=VehicleMode("GUIDED")
         while self.vehicle.is_armable==False:
             self.get_logger().info("Waiting for vehicle to become armable...")
@@ -58,20 +70,28 @@ class DroneHandler(Node):
 
         self.get_logger().info("Vehicle is now armed.")
         self.get_logger().info("props are spinning!")
-
-    def __del__(self):
-        self.vehicle.mode=VehicleMode("RTL")
-
-
+        self.state = "OK"
     
     def get_attitude_callback(self, request, response):
-        response.roll=self.vehicle.attitude.roll
-        response.pitch=self.vehicle.attitude.pitch
-        response.yaw=self.vehicle.attitude.yaw
-        self.get_logger().info(f"Get Attitude service called")
+        temp = self.vehicle.attitude
+        response.roll=temp.roll
+        response.pitch=temp.pitch
+        response.yaw=temp.yaw
+        self.get_logger().info(f"-- Get attitude service called --")
         self.get_logger().info(f"Roll: {response.roll}")
         self.get_logger().info(f"Pitch: {response.pitch}")
         self.get_logger().info(f"Yaw: {response.yaw}")
+        return response
+    
+    def get_location_relative_callback(self, request, response):
+        temp = self.vehicle.location.local_frame
+        response.north = temp.north
+        response.east = temp.east
+        response.down = temp.down
+        self.get_logger().info(f"-- Get location relative service called --")
+        self.get_logger().info(f"North: {response.north}")
+        self.get_logger().info(f"East: {response.east}")
+        self.get_logger().info(f"Down: {response.down}")
         return response
 
     
