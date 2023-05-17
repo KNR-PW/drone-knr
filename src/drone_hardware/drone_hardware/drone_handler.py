@@ -1,5 +1,5 @@
 import rclpy
-from dronekit import connect, VehicleMode
+from dronekit import connect, VehicleMode, LocationLocal, LocationGlobalRelative
 
 import argparse
 import time
@@ -9,7 +9,7 @@ from rclpy.node import Node
 from rclpy.action import ActionServer
 
 from drone_interfaces.srv import GetAttitude, GetLocationRelative
-from drone_interfaces.action import GotoPos
+from drone_interfaces.action import GotoRelative, GotoGlobal
 
 class DroneHandler(Node):
     def __init__(self):
@@ -20,15 +20,13 @@ class DroneHandler(Node):
         self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
         
         ## DECLARE ACTIONS
-        self.goto = ActionServer(
-            self,
-            GotoPos,
-            'goto_pos',
-            self.goto_action
-        )
+        self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
+        self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
+        self.current_destination_rel = LocationLocal()
+        self.current_destination_global = LocationGlobalRelative()
 
         ##CONNECT TO COPTER
         parser = argparse.ArgumentParser(description='commands')
@@ -50,11 +48,11 @@ class DroneHandler(Node):
         self.state = "OK"
         self.get_logger().info("Copter connected, ready to arm")
 
-
-
     def __del__(self):
         self.vehicle.mode=VehicleMode("RTL")
 
+
+    ## INTERNAL HELPER METHODS
     def arm(self):
         self.state = "BUSY"
         self.vehicle.mode=VehicleMode("GUIDED")
@@ -72,6 +70,19 @@ class DroneHandler(Node):
         self.get_logger().info("props are spinning!")
         self.state = "OK"
     
+    def calculate_remaining_distance_rel(self, location):
+        dnorth = location.north - self.current_destination_rel.north
+        deast = location.east - self.current_destination_rel.east
+        ddown = location.down - self.current_destination_rel.down
+        return math.sqrt(dnorth*dnorth+deast*deast+ddown*ddown)
+    
+    def calculate_remaining_distance_global(self, location):
+        dlat = (location.lat - self.current_destination_global.lat) * 1.113195e5 ## lat/lon to meters convert magic number
+        dlon = (location.lon - self.current_destination_global.lon) * 1.113195e5 ## lat/lon to meters convert magic number
+        ddown = location.down - self.current_destination_global.down
+        return math.sqrt(dlat * dlat + dlon * dlon + ddown * ddown)
+
+    ## SERVICE CALLBACKS
     def get_attitude_callback(self, request, response):
         temp = self.vehicle.attitude
         response.roll=temp.roll
@@ -95,16 +106,20 @@ class DroneHandler(Node):
         return response
 
     
-    def goto_action(self, goal_handle):
+    ## ACTION CALLBACKS
+    def goto_relative_action(self, goal_handle):
         self.get_logger().info(f'Flying to: lat={goal_handle.request}')
         self.vehicle.simple_goto()
 
 
 
         goal_handle.succeed()
-        result=GotoPos.Result()
+        result=GotoRelative.Result()
         # result.distance = distance
         return result.roll, result.pitch, result.yaw
+    
+    def goto_global_action(self, goal_handle):
+        return 
 
 
 
