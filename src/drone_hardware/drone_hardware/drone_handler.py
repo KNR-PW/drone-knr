@@ -26,8 +26,6 @@ class DroneHandler(Node):
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
-        self.current_destination_rel = LocationLocal()
-        self.current_destination_global = LocationGlobalRelative()
 
         ##CONNECT TO COPTER
         parser = argparse.ArgumentParser(description='commands')
@@ -51,7 +49,6 @@ class DroneHandler(Node):
 
     def __del__(self):
         self.vehicle.mode=VehicleMode("RTL")
-
 
     ## INTERNAL HELPER METHODS
     def arm(self):
@@ -120,15 +117,15 @@ class DroneHandler(Node):
 
 
     def calculate_remaining_distance_rel(self, location):
-        dnorth = location.north - self.current_destination_rel.north
-        deast = location.east - self.current_destination_rel.east
-        ddown = location.down - self.current_destination_rel.down
+        dnorth = location.north - self.vehicle.location.local_frame.north
+        deast = location.east - self.vehicle.location.local_frame.east
+        ddown = location.down - self.vehicle.location.local_frame.down
         return math.sqrt(dnorth*dnorth + deast*deast + ddown*ddown)
     
     def calculate_remaining_distance_global(self, location):
-        dlat = (location.lat - self.current_destination_global.lat) * 1.113195e5 ## lat/lon to meters convert magic number
-        dlon = (location.lon - self.current_destination_global.lon) * 1.113195e5 ## lat/lon to meters convert magic number
-        ddown = location.down - self.current_destination_global.down
+        dlat = (location.lat - self.vehicle.location.global_relative_frame.lat) * 1.113195e5 ## lat/lon to meters convert magic number
+        dlon = (location.lon - self.vehicle.location.global_relative_frame.lon) * 1.113195e5 ## lat/lon to meters convert magic number
+        ddown = location.down - self.vehicle.location.global_relative_frame.down
         return math.sqrt(dlat*dlat + dlon*dlon + ddown*ddown)
 
     ## SERVICE CALLBACKS
@@ -159,64 +156,66 @@ class DroneHandler(Node):
     def goto_relative_action(self, goal_handle):
         self.get_logger().info(f'-- Goto relative action registered. Destination in local frame: --')
 
-        destination=LocationLocal()
-        destination.north = self.vehicle.location.local_frame.north + goal_handle.request.north
-        destination.east = self.vehicle.location.local_frame.east + goal_handle.request.east
-        destination.down = self.vehicle.location.local_frame.down + goal_handle.request.down
+        north = self.vehicle.location.local_frame.north + goal_handle.request.north
+        east = self.vehicle.location.local_frame.east + goal_handle.request.east
+        down = self.vehicle.location.local_frame.down + goal_handle.request.down
+        destination = LocationLocal(north, east, down)
 
         self.get_logger().info(f'North: {destination.north}')
         self.get_logger().info(f'East: {destination.east}')
         self.get_logger().info(f'Down: {destination.down}')
 
-        self.current_destination_rel = destination
         self.state = "BUSY"
 
         self.goto_position_target_local_ned(destination.north, destination.east, destination.down)
 
         feedback_msg = GotoRelative.Feedback()
         feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+        self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
 
-        while feedback_msg.distance<0.5:
+        while feedback_msg.distance>0.5:
             feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
             self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
             time.sleep(1)
 
-        goal_handle.suceed()
-        self.current_destination_rel = LocationLocal()
+        goal_handle.succeed()
         self.state = "OK"
+        result = GotoRelative.Result()
+        result.result=1
 
-        return 1
+        return result
     
     def goto_global_action(self, goal_handle):
         self.get_logger().info(f'-- Goto global action registered. Destination in global frame: --')
 
-        destination=LocationGlobalRelative()
-        destination.lat = self.vehicle.location.global_relative_frame.lat + goal_handle.request.lat
-        destination.lon = self.vehicle.location.global_relative_frame.lon + goal_handle.request.lon
-        destination.alt = self.vehicle.location.global_relative_frame.alt + goal_handle.request.alt
+        lat = self.vehicle.location.global_relative_frame.lat + goal_handle.request.lat
+        lon = self.vehicle.location.global_relative_frame.lon + goal_handle.request.lon
+        alt = self.vehicle.location.global_relative_frame.alt + goal_handle.request.alt
+        destination=LocationGlobalRelative(lat,lon,alt)
 
         self.get_logger().info(f'Latitude: {destination.lat}')
         self.get_logger().info(f'Longitude: {destination.lon}')
         self.get_logger().info(f'Altitude: {destination.alt}')
 
-        self.current_destination_global = destination
         self.state = "BUSY"
 
         self.goto_position_target_local_ned(destination.north, destination.east, destination.alt)
 
         feedback_msg = GotoGlobal.Feedback()
         feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+        self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
 
-        while feedback_msg.distance<0.5:
+        while feedback_msg.distance>0.5:
             feedback_msg.distance = self.calculate_remaining_distance_global(destination)
             self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
             time.sleep(1)
 
-        goal_handle.suceed()
-        self.current_destination_global = LocationGlobalRelative()
+        goal_handle.succeed()
         self.state = "OK"
+        result = GotoGlobal.Result()
+        result.result = 1
 
-        return 1
+        return result
 
 
 
