@@ -85,7 +85,9 @@ class DroneHandler(Node):
             time.sleep(1)
         self.state = "OK"
 
-    def goto_position_target_local_ned(self, north, east, down):
+    def goto_position_target_local_ned(self, north, east, down=-1):
+        if down == -1:
+            down = self.vehicle.location.local_frame.down
         msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
             0,       # time_boot_ms (not used)
             0, 0,    # target system, target component
@@ -98,18 +100,36 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    
+    def goto_position_target_global_int(self, location):
+        msg = self.vehicle.message_factory.set_position_target_global_int_encode(
+        0,       # time_boot_ms (not used)
+        0, 0,    # target system, target component
+        mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT, # frame
+        0b0000111111111000, # type_mask (only speeds enabled)
+        location.lat*1e7, # lat_int - X Position in WGS84 frame in 1e7 * meters
+        location.lon*1e7, # lon_int - Y Position in WGS84 frame in 1e7 * meters
+        location.alt, # alt - Altitude in meters in AMSL altitude, not WGS84 if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT
+        0, # X velocity in NED frame in m/s
+        0, # Y velocity in NED frame in m/s
+        0, # Z velocity in NED frame in m/s
+        0, 0, 0, # afx, afy, afz acceleration (not supported yet, ignored in GCS_Mavlink)
+        0, 0)    # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
+
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+
+
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.current_destination_rel.north
         deast = location.east - self.current_destination_rel.east
         ddown = location.down - self.current_destination_rel.down
-        return math.sqrt(dnorth*dnorth+deast*deast+ddown*ddown)
+        return math.sqrt(dnorth*dnorth + deast*deast + ddown*ddown)
     
     def calculate_remaining_distance_global(self, location):
         dlat = (location.lat - self.current_destination_global.lat) * 1.113195e5 ## lat/lon to meters convert magic number
         dlon = (location.lon - self.current_destination_global.lon) * 1.113195e5 ## lat/lon to meters convert magic number
         ddown = location.down - self.current_destination_global.down
-        return math.sqrt(dlat * dlat + dlon * dlon + ddown * ddown)
+        return math.sqrt(dlat*dlat + dlon*dlon + ddown*ddown)
 
     ## SERVICE CALLBACKS
     def get_attitude_callback(self, request, response):
@@ -137,18 +157,66 @@ class DroneHandler(Node):
     
     ## ACTION CALLBACKS
     def goto_relative_action(self, goal_handle):
-        self.get_logger().info(f'Flying to: lat={goal_handle.request}')
-        self.vehicle.simple_goto()
+        self.get_logger().info(f'-- Goto relative action registered. Destination in local frame: --')
 
+        destination=LocationLocal()
+        destination.north = self.vehicle.location.local_frame.north + goal_handle.request.north
+        destination.east = self.vehicle.location.local_frame.east + goal_handle.request.east
+        destination.down = self.vehicle.location.local_frame.down + goal_handle.request.down
 
+        self.get_logger().info(f'North: {destination.north}')
+        self.get_logger().info(f'East: {destination.east}')
+        self.get_logger().info(f'Down: {destination.down}')
 
-        goal_handle.succeed()
-        result=GotoRelative.Result()
-        # result.distance = distance
-        return result.roll, result.pitch, result.yaw
+        self.current_destination_rel = destination
+        self.state = "BUSY"
+
+        self.goto_position_target_local_ned(destination.north, destination.east, destination.down)
+
+        feedback_msg = GotoRelative.Feedback()
+        feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+
+        while feedback_msg.distance<0.5:
+            feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+            self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
+            time.sleep(1)
+
+        goal_handle.suceed()
+        self.current_destination_rel = LocationLocal()
+        self.state = "OK"
+
+        return 1
     
     def goto_global_action(self, goal_handle):
-        return 
+        self.get_logger().info(f'-- Goto global action registered. Destination in global frame: --')
+
+        destination=LocationGlobalRelative()
+        destination.lat = self.vehicle.location.global_relative_frame.lat + goal_handle.request.lat
+        destination.lon = self.vehicle.location.global_relative_frame.lon + goal_handle.request.lon
+        destination.alt = self.vehicle.location.global_relative_frame.alt + goal_handle.request.alt
+
+        self.get_logger().info(f'Latitude: {destination.lat}')
+        self.get_logger().info(f'Longitude: {destination.lon}')
+        self.get_logger().info(f'Altitude: {destination.alt}')
+
+        self.current_destination_global = destination
+        self.state = "BUSY"
+
+        self.goto_position_target_local_ned(destination.north, destination.east, destination.alt)
+
+        feedback_msg = GotoGlobal.Feedback()
+        feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+
+        while feedback_msg.distance<0.5:
+            feedback_msg.distance = self.calculate_remaining_distance_global(destination)
+            self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
+            time.sleep(1)
+
+        goal_handle.suceed()
+        self.current_destination_global = LocationGlobalRelative()
+        self.state = "OK"
+
+        return 1
 
 
 
