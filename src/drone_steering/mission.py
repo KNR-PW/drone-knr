@@ -10,9 +10,6 @@ from pymavlink import mavutil # Needed for command message definitions
 import cv2
 
 
-global vehicle # CANNOT BE THAT WAY
-
-
 class DroneMission:
     def __init__(self):
         # connecting
