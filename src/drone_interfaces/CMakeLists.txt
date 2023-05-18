@@ -14,6 +14,10 @@ find_package(ament_cmake REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DetectionMsg.msg"
   "msg/DetectionsList.msg"
+  "srv/GetAttitude.srv"
+  "srv/GetLocationRelative.srv"
+  "action/GotoRelative.action"
+  "action/GotoGlobal.action"
   "srv/DetectTrees.srv"
  )
 ament_export_dependencies(rosidl_default_runtime)
