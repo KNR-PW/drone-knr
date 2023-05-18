@@ -6,14 +6,15 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
+find_package(rosidl_default_generators REQUIRED)
 find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Detection.msg"
+  "msg/DetectionMsg.msg"
   "msg/DetectionsList.msg"
+  "srv/DetectTrees.srv"
  )
 ament_export_dependencies(rosidl_default_runtime)
 
