@@ -10,12 +10,12 @@ from rclpy.action import ActionServer
 
 from drone_interfaces.srv import GetYaw
 from drone_interfaces.action import GotoPos
-from drone_interfaces.msg import GPSPos
+# from drone_interfaces.msg import GPSPos
 class DroneHandler(Node):
     def __init__(self):
         super().__init__('drone_handler')
 
-        self.gps_publisher = self.create_publisher(GPSPos, "gps_position", 10)
+        # self.gps_publisher = self.create_publisher(GPSPos, "gps_position", 10)
         ##CONNECT TO COPTER
         parser = argparse.ArgumentParser(description='commands')
         parser.add_argument('--connect', default='127.0.0.1:14550')
