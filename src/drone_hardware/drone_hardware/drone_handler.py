@@ -26,8 +26,8 @@ class DroneHandler(Node):
         ## DECLARE ACTIONS
         self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
         self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
-        self.arm = ActionServer(Arm, 'Arm',self.arm_callback)
-        self.takeoff = ActionServer(Arm, 'Arm',self.arm_callback)
+        self.arm = ActionServer(self,Arm, 'Arm',self.arm_callback)
+        self.takeoff = ActionServer(self, Takeoff, 'takeoff',self.takeoff_callback)
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
@@ -89,7 +89,14 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def condition_yaw(self, yaw, relative=False):
+    def set_yaw(self, yaw, relative=False):
+        if yaw<0:
+            yaw+=6.283185
+        yaw = yaw / 3.141592 * 180
+        if abs(self.vehicle.attitude.yaw - yaw) > 3.141592:
+            dir = 1 if self.vehicle.attitude.yaw < yaw else -1
+        else:
+            dir = 1 if self.vehicle.attitude.yaw > yaw else -1
         if relative:
             is_relative=1 #yaw relative to direction of travel
         else:
@@ -118,8 +125,6 @@ class DroneHandler(Node):
             0,0,0,0,0,) #not used
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
-
-
 
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.vehicle.location.local_frame.north
@@ -157,7 +162,7 @@ class DroneHandler(Node):
         return response
     
     def set_yaw_callback(self, request, response):
-        self.condition_yaw(request.yaw)
+        self.set_yaw(request.yaw)
         response = SetYaw.Response()
         return response
 
