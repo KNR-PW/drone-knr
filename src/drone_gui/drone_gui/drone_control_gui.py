@@ -6,9 +6,13 @@ import sys
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
-
 from rcl_interfaces.msg import Log
 from PyQt5.QtCore import Qt, QTimer
+
+from drone_interfaces.action import GotoPos
+from drone_interfaces.srv import GetYaw
+
+
 
 class Ui_MainWindow(object):
         def __init__(self):
@@ -22,6 +26,8 @@ class Ui_MainWindow(object):
                         '/rosout',
                         self.log_callback,
                         10)
+                self.node.goto_action_client = ActionClient(self.node, GotoPos, 'goto_pos')
+
                 # spin once, timeout_sec 5[s]
                 timeout_sec_rclpy = 5
                 timeout_init = time.time()
@@ -34,19 +40,24 @@ class Ui_MainWindow(object):
                         self.node.get_logger().info("Ros connection failed")
                 self.timer.start(100)
 
-        def ros_connect_clients(self):
-                self.goto_action_client = ActionClient(self, Fibonacci, 'fibonacci')
+        def ros_client_goto(self, x, y, z):
+                self.node.get_logger().info("Sending goto action goal")
+                goal_msg = GotoPos.Goal()
+                goal_msg.x = x
+                goal_msg.y = y
+                goal_msg.z = z
+                while not self.node.goto_action_client.wait_for_server():
+                        self.get_logger().info('waiting for goto server...')
 
-                self._cli = self.node.create_client(DetectTrees, 'detect_trees')
-                while not self.det_cli.wait_for_service(timeout_sec=1.0):
-                self.node.get_logger().info('detect_trees service not available, waiting again...')
-                self.req = DetectTrees.Request()
-                self.get_logger().info('DetectionClient node created')
+
+                self.node.goto_action_client.send_goal_async(goal_msg)
+                self.node.get_logger().info("Goto action sent")
         def timer_ros_update(self):
                 rclpy.spin_once(self.node, timeout_sec=0.05)
 
         def log_callback(self, log):
-                pass
+                self.textBrowser.append(log.name + ": " + log.msg)
+
         def setupUi(self, MainWindow):
                 MainWindow.setObjectName("MainWindow")
                 MainWindow.resize(1285, 706)
@@ -357,7 +368,7 @@ class Ui_MainWindow(object):
                 if not north.isnumeric() or not east.isnumeric() or not down.isnumeric():
                         self.error_popup()
                 else:
-                        pass
+                        self.ros_client_goto(int(north), int(east), int(down))
                 self.lineEdit.clear()
                 self.lineEdit_2.clear()
                 self.lineEdit_3.clear()
