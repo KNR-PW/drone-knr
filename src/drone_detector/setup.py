@@ -22,7 +22,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name), glob('launch/*.launch.py')),
-        (os.path.join('lib', package_name), glob('video_files/*.mp4'))
+        (os.path.join('lib', package_name), glob('video_files/*.mp4')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -36,6 +36,9 @@ setup(
             "image_publisher=drone_detector.image_publisher:main",
             "image_subscriber=drone_detector.image_subscriber:main",
             "detector=drone_detector.detector:main",
+            "detection_subscriber=drone_detector.detection_subscriber:main",
+            "detector_server=drone_detector.detector_server:main",
+            "detection_client=drone_detector.detection_client:main"
         ],
     },
 )
