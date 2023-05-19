@@ -43,7 +43,8 @@ class ImagePublisher(Node):
 
         # Used to convert between ROS and OpenCV images
         self.br = CvBridge()
-        print(os.path.dirname(__file__))
+        self.get_logger().info('Image Publisher node created')
+
 
     def timer_callback(self):
         """
