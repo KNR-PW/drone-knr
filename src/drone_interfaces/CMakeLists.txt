@@ -16,6 +16,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DetectionsList.msg"
   "srv/GetAttitude.srv"
   "srv/GetLocationRelative.srv"
+  "srv/SetYaw.srv"
+  "srv/SetServo.srv"
   "action/GotoRelative.action"
   "action/GotoGlobal.action"
  )

@@ -9,7 +9,7 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.srv import GetAttitude, GetLocationRelative
+from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw
 from drone_interfaces.action import GotoRelative, GotoGlobal
 
 class DroneHandler(Node):
@@ -19,6 +19,8 @@ class DroneHandler(Node):
         ## DECLARE SERVICES
         self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
         self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
+        self.servo = self.create_service(SetServo, 'set_servo', self.set_servo_callback)
+        self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
         
         ## DECLARE ACTIONS
         self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
@@ -115,6 +117,37 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
+    def condition_yaw(self, yaw, relative=False):
+        if relative:
+            is_relative=1 #yaw relative to direction of travel
+        else:
+            is_relative=0 #yaw is an absolute angle
+        # create the CONDITION_YAW command using command_long_encode()
+        msg = self.vehicle.message_factory.command_long_encode(
+            0, 0,        # target system, target component
+            mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
+            0,           #confirmation
+            yaw,         # param 1, yaw in degrees
+            0,           # param 2, yaw speed deg/s
+            1,           # param 3, direction -1 ccw, 1 cw
+            is_relative, # param 4, relative offset 1, absolute angle 0
+            0, 0, 0)     # param 5 ~ 7 not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+
+    def set_servo(self, servo_id, pwm):
+        msg = self.vehicle.message_factory.command_long_encode(
+            0,          # time_boot_ms (not used)
+            0, 0,       # target system, target component
+            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
+            0,          #not used
+            servo_id,   #number of servo instance
+            pwm,        #pwm value for servo control
+            0,0,0,0,0,) #not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+
+
 
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.vehicle.location.local_frame.north
@@ -150,8 +183,17 @@ class DroneHandler(Node):
         self.get_logger().info(f"East: {response.east}")
         self.get_logger().info(f"Down: {response.down}")
         return response
-
     
+    def set_yaw_callback(self, request, response):
+        self.condition_yaw(request.yaw)
+        response = SetYaw.response()
+        return response
+
+    def set_servo_callback(self, request, response):
+        self.set_servo(request.servo_id, request.pwm)
+        response = SetServo.response()
+        return response
+
     ## ACTION CALLBACKS
     def goto_relative_action(self, goal_handle):
         self.get_logger().info(f'-- Goto relative action registered. Destination in local frame: --')
