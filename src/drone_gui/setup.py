@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             "detector_gui=drone_gui.detector_gui:main",
+            "drone_control_gui=drone_gui.drone_control_gui:main",
         ],
     },
 )
