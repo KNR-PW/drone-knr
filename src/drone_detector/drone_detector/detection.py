@@ -7,6 +7,7 @@ class Detection:
 
     def set_bounding_box(self, bb):
         self.bounding_box = bb
+
     def set_gps_pos(self, pos):
         self.gps_pos = pos
 
@@ -14,7 +15,7 @@ class Detection:
         return self.bounding_box
 
     def get_gps_pos(self):
-        return  self.gps_pos
+        return self.gps_pos
 
     def get_color(self):
         return self.color
