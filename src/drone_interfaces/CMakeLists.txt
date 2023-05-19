@@ -18,8 +18,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetLocationRelative.srv"
   "srv/SetYaw.srv"
   "srv/SetServo.srv"
+  "srv/SetMode.srv"
   "action/GotoRelative.action"
   "action/GotoGlobal.action"
+  "action/Arm.action"
+  "action/Takeoff.action"
   "srv/DetectTrees.srv"
  )
 ament_export_dependencies(rosidl_default_runtime)

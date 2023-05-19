@@ -9,8 +9,8 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw
-from drone_interfaces.action import GotoRelative, GotoGlobal
+from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw, SetMode
+from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff
 
 class DroneHandler(Node):
     def __init__(self):
@@ -21,10 +21,13 @@ class DroneHandler(Node):
         self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
         self.servo = self.create_service(SetServo, 'set_servo', self.set_servo_callback)
         self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
+        self.mode = self.create_service(SetMode, 'set_mode',self.set_mode_callback)
         
         ## DECLARE ACTIONS
         self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
         self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
+        self.arm = ActionServer(Arm, 'Arm',self.arm_callback)
+        self.takeoff = ActionServer(Arm, 'Arm',self.arm_callback)
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
@@ -53,37 +56,6 @@ class DroneHandler(Node):
         self.vehicle.mode=VehicleMode("RTL")
 
     ## INTERNAL HELPER METHODS
-    def arm(self):
-        self.state = "BUSY"
-        self.vehicle.mode=VehicleMode("GUIDED")
-        while self.vehicle.is_armable==False:
-            self.get_logger().info("Waiting for vehicle to become armable...")
-            time.sleep(5)
-        self.get_logger().info("Vehicle is now armable")
-
-        self.vehicle.armed=True
-        while self.vehicle.armed==False:
-            self.get_logger().info("Waiting for drone to become armed...")
-            time.sleep(1)
-
-        self.get_logger().info("Vehicle is now armed.")
-        self.get_logger().info("props are spinning!")
-        self.state = "OK"
-    
-    def takeoff(self, altitude):
-        self.state = "OK"
-        self.vehicle.simple_takeoff(altitude)
-
-        # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
-        #  after Vehicle.simple_takeoff will execute immediately).
-        while True:
-            self.get_logger().info(f"Altitude: {self.vehicle.location.global_relative_frame.alt}")
-            if self.vehicle.location.global_relative_frame.alt >= altitude * 0.97:  # Trigger just below target alt.
-                self.get_logger().info("Reached target altitude")
-                break
-            time.sleep(1)
-        self.state = "OK"
-
     def goto_position_target_local_ned(self, north, east, down=-1):
         if down == -1:
             down = self.vehicle.location.local_frame.down
@@ -186,12 +158,17 @@ class DroneHandler(Node):
     
     def set_yaw_callback(self, request, response):
         self.condition_yaw(request.yaw)
-        response = SetYaw.response()
+        response = SetYaw.Response()
         return response
 
     def set_servo_callback(self, request, response):
         self.set_servo(request.servo_id, request.pwm)
-        response = SetServo.response()
+        response = SetServo.Response()
+        return response
+    
+    def set_mode_callback(self, request, response):
+        self.vehicle.mode = VehicleMode(request.mode)
+        response = SetMode.Response()
         return response
 
     ## ACTION CALLBACKS
@@ -255,6 +232,56 @@ class DroneHandler(Node):
         goal_handle.succeed()
         self.state = "OK"
         result = GotoGlobal.Result()
+        result.result = 1
+
+        return result
+    
+    def arm_callback(self, goal_handle):
+        self.get_logger().info(f'-- Arm action registered --')
+        self.state = "BUSY"
+        feedback_msg = Arm.Feedback()
+        
+        while self.vehicle.is_armable==False:
+            feedback_msg.feedback = "Waiting for vehicle to become armable..."
+            self.get_logger().info(feedback_msg.feedback)
+            time.sleep(1)
+
+        self.vehicle.armed=True
+        while self.vehicle.armed==False:
+            feedback_msg.feedback = "Waiting for drone to become armed..."
+            self.get_logger().info(feedback_msg.feedback)
+            time.sleep(1)
+
+        feedback_msg.feedback = "Vehicle is now armed."
+        self.get_logger().info(feedback_msg.feedback)
+
+        self.state = "OK"
+        
+        goal_handle.succeed()
+        self.state = "OK"
+        result = Arm.Result()
+        result.result = 1
+
+        return result
+    
+    def takeoff_callback(self, goal_handle):
+        feedback_msg = Takeoff.Feedback()
+
+        self.state = "OK"
+        self.vehicle.simple_takeoff(goal_handle.request.altitude)
+
+        # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
+        #  after Vehicle.simple_takeoff will execute immediately).
+        while self.vehicle.location.global_relative_frame.alt >= goal_handle.request.altitude * 0.97:
+            feedback_msg.altitude = self.vehicle.location.global_relative_frame.alt
+            self.get_logger().info(f"Altitude: {feedback_msg.altitude}")
+            time.sleep(1)
+
+        self.get_logger().info("Reached target altitude")
+        
+        goal_handle.succeed()
+        self.state = "OK"
+        result = Takeoff.Result()
         result.result = 1
 
         return result
