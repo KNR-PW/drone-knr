@@ -15,6 +15,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DetectionMsg.msg"
   "msg/DetectionsList.msg"
   "srv/DetectTrees.srv"
+  "srv/GetYaw.srv"
+  "action/GotoPos.action"
  )
 ament_export_dependencies(rosidl_default_runtime)
 
