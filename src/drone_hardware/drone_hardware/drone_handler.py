@@ -44,8 +44,7 @@ class DroneHandler(Node):
         self.get_logger().info("Copter connected, ready to arm")
 
     def __del__(self):
-        if self.vehicle:
-            self.vehicle.mode=VehicleMode("RTL")
+        self.vehicle.mode=VehicleMode("RTL")
 
     ## INTERNAL HELPER METHODS
     def goto_position_target_local_ned(self, north, east, down=-1):
