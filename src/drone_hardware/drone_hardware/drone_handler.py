@@ -35,7 +35,7 @@ class DroneHandler(Node):
         ##CONNECT TO COPTER
 
 
-        connection_string = "/dev/ttySO"
+        connection_string = "/dev/serial0"
 
         baud_rate = 57600
         self.get_logger().info("Connecting with copter...")
