@@ -24,6 +24,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/Arm.action"
   "action/Takeoff.action"
   "srv/DetectTrees.srv"
+  "srv/TakePhoto.srv"
  )
 ament_export_dependencies(rosidl_default_runtime)
 
