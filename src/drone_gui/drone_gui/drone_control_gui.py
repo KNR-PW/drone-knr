@@ -7,9 +7,10 @@ import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox, qApp
 from rcl_interfaces.msg import Log
-from PyQt5.QtCore import Qt, QTimer,  QObject, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QObject, QThread, pyqtSignal
 from drone_interfaces.action import GotoRelative, Takeoff, Arm
 from drone_interfaces.srv import SetYaw, GetAttitude, GetLocationRelative, SetMode, SetServo, TakePhoto
+
 
 class BoxLogger(QObject):
     def __init__(self, textEdit, node):
@@ -23,11 +24,14 @@ class BoxLogger(QObject):
     def run(self):
         self.text_edit.append(self.log_info)
         rclpy.spin(self.node)
+
     def add_log(self, log):
         self.log_info = log
         self.new_log = True
+
     def log_callback(self, cb):
         print('dupalog')
+
 
 class Ui_MainWindow(object):
     def __init__(self):
@@ -35,18 +39,18 @@ class Ui_MainWindow(object):
         self.gps_timer = QTimer()
         self.log_signal = pyqtSignal()
         self.log_thread = QThread()
-        
+
         self.ros_timer.timeout.connect(self.timer_ros_update)
         self.gps_timer.timeout.connect(self.gps_timer_update)
         self.step = 0.0
-        
-    
+
     def init_box_logger(self):
         self.box_logger = BoxLogger(self.log_textEdit, self.node)
         self.log_thread = QThread()
         self.box_logger.moveToThread(self.log_thread)
         self.log_thread.started.connect(self.box_logger.run)
         self.log_thread.start()
+
     def ros_init(self):
         rclpy.init(args=None)
         self.node = Node('drone_control_gui')
@@ -67,7 +71,6 @@ class Ui_MainWindow(object):
         self.yaw_cli = self.node.create_client(SetYaw, 'set_yaw')
         self.mode_cli = self.node.create_client(SetMode, 'set_mode')
         self.photo_cli = self.node.create_client(TakePhoto, 'take_photo')
-
 
         ## DECLARE ACTIONS
         self.node.goto_rel_action_client = ActionClient(self.node, GotoRelative, 'goto_relative')
@@ -91,7 +94,6 @@ class Ui_MainWindow(object):
 
     def timer_ros_update(self):
         rclpy.spin_once(self.node, timeout_sec=0.05)
-        
 
     def ros_update_position(self):
         request = GetLocationRelative.Request()
@@ -104,7 +106,7 @@ class Ui_MainWindow(object):
             self.textBrowser_2.clear()
             text_msg = " North: " + str(north)
             self.textBrowser_2.append(text_msg)
-            text_msg = " East: " + str(east) 
+            text_msg = " East: " + str(east)
             self.textBrowser_2.append(text_msg)
             text_msg = " Down: " + str(down)
             self.textBrowser_2.append(text_msg)
@@ -199,7 +201,7 @@ class Ui_MainWindow(object):
         self.log_textEdit = QtWidgets.QTextEdit(self.centralwidget)
         self.log_textEdit.setGeometry(QtCore.QRect(780, 20, 471, 551))
         self.log_textEdit.setStyleSheet("background-color: rgb(40,30,55);\n"
-"")
+                                        "")
         self.log_textEdit.setObjectName("log_textEdit")
         self.gridLayoutWidget_3 = QtWidgets.QWidget(self.centralwidget)
         self.gridLayoutWidget_3.setGeometry(QtCore.QRect(450, 510, 301, 81))
@@ -454,15 +456,17 @@ class Ui_MainWindow(object):
         self.init_my_components()
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        
+
         self.connect_my_signals()
         self.ros_init()
         self.init_box_logger()
+
     def init_my_components(self):
         self.step_spinBox.setMinimum(0)
         self.step_spinBox.setMaximum(5000)
 
         self.log_textEdit.setReadOnly(True)
+
     def connect_my_signals(self):
         self.pushButton.clicked.connect(self.go_button_clicked)
         self.arm_button.clicked.connect(self.arm_button_clicked)
@@ -478,7 +482,7 @@ class Ui_MainWindow(object):
         self.set_servo.clicked.connect(self.set_servo_button_clicked)
 
         self.step_spinBox.valueChanged.connect(self.step_spinBox_changed)
-    
+
     def take_photo_button_clicked(self):
         self.take_photo.setStyleSheet("background-color : yellow")
         QtWidgets.qApp.processEvents()
@@ -495,19 +499,21 @@ class Ui_MainWindow(object):
         self.ros_send_servo(id, pwm)
 
     def step_spinBox_changed(self):
-        self.step = float(self.step_spinBox.value()/100)
+        self.step = float(self.step_spinBox.value() / 100)
         print(self.step)
 
     def left_button_clicked(self):
         self.ros_send_goto_relative(0.0, -self.step, 0.0)
+
     def right_button_clicked(self):
         self.ros_send_goto_relative(0.0, self.step, 0.0)
-       
+
     def forward_button_clicked(self):
         self.ros_send_goto_relative(self.step, 0.0, 0.0)
 
     def back_button_clicked(self):
         self.ros_send_goto_relative(-self.step, 0.0, 0.0)
+
     def up_button_clicked(self):
         self.ros_send_goto_relative(0.0, 0.0, -self.step)
 
@@ -541,7 +547,6 @@ class Ui_MainWindow(object):
         else:
             self.node.get_logger().info("Servo request failed")
             self.set_servo.setStyleSheet("background-color : red")
-
 
     def ros_send_take_photo(self, photos_number=0):
         request = TakePhoto.Request()

@@ -10,6 +10,7 @@ from drone_interfaces.srv import DetectTrees, TakePhoto
 from std_msgs.msg import Int32MultiArray
 import os
 
+
 class Detection:
     def __init__(self, bounding_box=(0, 0, 0, 0), color="", gps_pos=(0, 0)):
         # Format x, y, w, h
@@ -57,13 +58,12 @@ class DetectorServer(Node):
         self.photos_path = "/home/stas/Dron/drone_photos/"
         # self.detection_msg = Detection()
         self.detections_list_msg = DetectionsList()
-        
+
         self.get_logger().info('DetectorServer node created')
         self.video_capture = cv2.VideoCapture(0)
         while (self.video_capture.isOpened() == False):
             self.get_logger().info('Waiting for camera video cpture to open...')
         _, self.frame = self.video_capture.read()
-
 
     def take_photo_callback(self, request, response):
         photos_number = request.photos_number
@@ -74,9 +74,9 @@ class DetectorServer(Node):
                 self.get_logger().info('Taking photo failed')
                 break
             else:
-                print(self.photos_path+"drone_photo"+str(self.series_counter)+str(i)+'.jpg')
-                cv2.imwrite(self.photos_path+"drone_photo"+str(self.series_counter)+str(i)+'.jpg', frame)
-                
+                print(self.photos_path + "drone_photo" + str(self.series_counter) + str(i) + '.jpg')
+                cv2.imwrite(self.photos_path + "drone_photo" + str(self.series_counter) + str(i) + '.jpg', frame)
+
         self.series_counter += 1
         self.get_logger().info(f'Taking  {photos_number} photos succeeded')
 
