@@ -33,11 +33,9 @@ class DroneHandler(Node):
         self.state = "BUSY"
 
         ##CONNECT TO COPTER
-        parser = argparse.ArgumentParser(description='commands')
-        parser.add_argument('--connect', default='127.0.0.1:14550')
-        args = parser.parse_args()
 
-        connection_string = args.connect
+
+        connection_string = "/dev/ttyAMAO"
 
         sitl = None
 
@@ -47,7 +45,7 @@ class DroneHandler(Node):
             sitl = dronekit_sitl.start_default()
             connection_string = sitl.connection_string()
         baud_rate = 57600
-        self.get_logger().info("Connectiong with copter...")
+        self.get_logger().info("Connecting with copter...")
         self.vehicle = connect(connection_string, baud=baud_rate, wait_ready=False) #doesnt work with wait_ready=True
         self.state = "OK"
         self.get_logger().info("Copter connected, ready to arm")
