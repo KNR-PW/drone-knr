@@ -152,13 +152,13 @@ class DroneHandler(Node):
     
     def get_location_relative_callback(self, request, response):
         temp = self.vehicle.location.local_frame
-        response.north = temp.north
-        response.east = temp.east
-        response.down = temp.down
-        self.get_logger().info(f"-- Get location relative service called --")
-        self.get_logger().info(f"North: {response.north}")
-        self.get_logger().info(f"East: {response.east}")
-        self.get_logger().info(f"Down: {response.down}")
+        response.north = temp.north or 0.0
+        response.east = temp.east or 0.0
+        response.down = temp.down or 0.0
+        # self.get_logger().info(f"-- Get location relative service called --")
+        # self.get_logger().info(f"North: {response.north}")
+        # self.get_logger().info(f"East: {response.east}")
+        # self.get_logger().info(f"Down: {response.down}")
         return response
     
     def set_yaw_callback(self, request, response):
