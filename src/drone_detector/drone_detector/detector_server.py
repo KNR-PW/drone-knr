@@ -6,9 +6,9 @@ import cv2  # OpenCV library
 import numpy as np
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
-from drone_interfaces.srv import DetectTrees
+from drone_interfaces.srv import DetectTrees, TakePhoto
 from std_msgs.msg import Int32MultiArray
-
+import os
 
 class Detection:
     def __init__(self, bounding_box=(0, 0, 0, 0), color="", gps_pos=(0, 0)):
@@ -46,18 +46,41 @@ class DetectorServer(Node):
                                                                 10)
 
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
-
+        self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
         self.img_size = (640, 480)
+        self.series_counter = 0
+        self.photos_path = "/home/stas/Dron/drone_photos/"
         # self.detection_msg = Detection()
         self.detections_list_msg = DetectionsList()
-        self.video_capture = cv2.VideoCapture(0)
-        _, self.frame = self.video_capture.read()
+        
         self.get_logger().info('DetectorServer node created')
+        self.video_capture = cv2.VideoCapture(0)
+        while (self.video_capture.isOpened() == False):
+            self.get_logger().info('Waiting for camera video cpture to open...')
+        _, self.frame = self.video_capture.read()
+
+
+    def take_photo_callback(self, request, response):
+        photos_number = request.photos_number
+        print(os.path.abspath(__file__))
+        for i in range(photos_number):
+            ret, frame = self.video_capture.read()
+            if ret == 0:
+                self.get_logger().info('Taking photo failed')
+                break
+            else:
+                print(self.photos_path+"drone_photo"+str(self.series_counter)+str(i)+'.jpg')
+                cv2.imwrite(self.photos_path+"drone_photo"+str(self.series_counter)+str(i)+'.jpg', frame)
+                
+        self.series_counter += 1
+        self.get_logger().info(f'Taking  {photos_number} photos succeeded')
+
+        return response
 
     def detect_trees_callback(self, request, response):
         self.get_logger().info('Incoming detection request')
