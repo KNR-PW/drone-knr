@@ -7,17 +7,45 @@ import time
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
 from rcl_interfaces.msg import Log
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer,  QObject, QThread, pyqtSignal
 from drone_interfaces.action import GotoRelative, Takeoff, Arm
-from drone_interfaces.srv import SetYaw, GetAttitude, GetLocationRelative, SetMode, SetServo
+from drone_interfaces.srv import SetYaw, GetAttitude, GetLocationRelative, SetMode, SetServo, TakePhoto
 
+class BoxLogger(QObject):
+    def __init__(self, textBrowser):
+        super().__init__()
+        self.log_info = " LOGGER INIT LOG"
+        self.should_run = True
+        self.new_log = False
+        self.text_browser = textBrowser
+
+    def run(self):
+        self.text_browser.append(self.log_info)
+        while True:
+            if self.new_log:
+                self.text_browser.append(self.log_info)
+                self.new_log = False
+
+    def add_log(self, log):
+        self.log_info = log
+        self.new_log = True
 
 class Ui_MainWindow(object):
     def __init__(self):
         self.timer = QTimer()
+        self.log_signal = pyqtSignal()
+        self.log_thread = QThread()
+        
         self.timer.timeout.connect(self.timer_ros_update)
         self.step = 0.0
-
+        
+    
+    def init_box_logger(self):
+        self.box_logger = BoxLogger(self.textBrowser)
+        self.log_thread = QThread()
+        self.box_logger.moveToThread(self.log_thread)
+        self.log_thread.started.connect(self.box_logger.run)
+        self.log_thread.start()
     def ros_init(self):
         rclpy.init(args=None)
         self.node = Node('drone_control_gui')
@@ -27,17 +55,6 @@ class Ui_MainWindow(object):
             '/rosout',
             self.log_callback,
             10)
-
-        # spin once, timeout_sec 5[s]
-        timeout_sec_rclpy = 5
-        timeout_init = time.time()
-        rclpy.spin_once(self.node, timeout_sec=timeout_sec_rclpy)
-        timeout_end = time.time()
-        ros_connect_time = timeout_end - timeout_init
-        if ros_connect_time >= timeout_sec_rclpy:
-            self.node.get_logger().info("Ros connection succesfull")
-        else:
-            self.node.get_logger().info("Ros connection failed")
         self.timer.start(100)
 
     def ros_init_clients(self):
@@ -47,6 +64,8 @@ class Ui_MainWindow(object):
         self.servo_cli = self.node.create_client(SetServo, 'set_servo')
         self.yaw_cli = self.node.create_client(SetYaw, 'set_yaw')
         self.mode_cli = self.node.create_client(SetMode, 'set_mode')
+        self.photo_cli = self.node.create_client(TakePhoto, 'take_photo')
+
 
         ## DECLARE ACTIONS
         self.node.goto_rel_action_client = ActionClient(self.node, GotoRelative, 'goto_relative')
@@ -72,26 +91,25 @@ class Ui_MainWindow(object):
     def ros_update_position(self):
         request = GetLocationRelative.Request()
         gps_future = self.gps_cli.call_async(request)
-        rclpy.spin_until_future_complete(self.node, gps_future, timeout_sec=0.3)
-        north = round(gps_future.result().north, 2)
-        east = round(gps_future.result().east, 2)
-        down = round(gps_future.result().down, 2)
-        self.textBrowser_2.clear()
-        # text_msg = "North: " + str(north) + "  East: " + str(east) + "  Down: " + str(down)
-        # self.textBrowser_2.append(text_msg)
-        text_msg = " North: " + str(north)
-        self.textBrowser_2.append(text_msg)
-        text_msg = " East: " + str(east) 
-        self.textBrowser_2.append(text_msg)
-        text_msg = " Down: " + str(down)
-        self.textBrowser_2.append(text_msg)
+        rclpy.spin_until_future_complete(self.node, gps_future, timeout_sec=0.05)
+        if gps_future.result() is not None:
+            north = round(gps_future.result().north, 2)
+            east = round(gps_future.result().east, 2)
+            down = round(gps_future.result().down, 2)
+            self.textBrowser_2.clear()
+            text_msg = " North: " + str(north)
+            self.textBrowser_2.append(text_msg)
+            text_msg = " East: " + str(east) 
+            self.textBrowser_2.append(text_msg)
+            text_msg = " Down: " + str(down)
+            self.textBrowser_2.append(text_msg)
 
     def log_callback(self, log):
-        self.textBrowser.append(" " + log.name + ": " + log.msg)
+        self.box_logger.add_log(" " + log.name + ": " + log.msg)
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1285, 706)
+        MainWindow.resize(1289, 858)
         MainWindow.setStyleSheet("background-color: rgb(45,40,80);\n"
                                  "color: rgb(240,240,240);")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -378,6 +396,50 @@ class Ui_MainWindow(object):
         self.textBrowser_2.setStyleSheet("background-color: rgb(40,30,55);")
         self.textBrowser_2.setObjectName("textBrowser_2")
         self.horizontalLayout_4.addWidget(self.textBrowser_2)
+        self.gridLayoutWidget = QtWidgets.QWidget(self.centralwidget)
+        self.gridLayoutWidget.setGeometry(QtCore.QRect(220, 700, 194, 124))
+        self.gridLayoutWidget.setObjectName("gridLayoutWidget")
+        self.gridLayout = QtWidgets.QGridLayout(self.gridLayoutWidget)
+        self.gridLayout.setContentsMargins(0, 0, 0, 0)
+        self.gridLayout.setObjectName("gridLayout")
+        self.photo_spinBox = QtWidgets.QSpinBox(self.gridLayoutWidget)
+        self.photo_spinBox.setObjectName("photo_spinBox")
+        self.gridLayout.addWidget(self.photo_spinBox, 2, 1, 1, 1)
+        self.spinBox_3 = QtWidgets.QSpinBox(self.gridLayoutWidget)
+        self.spinBox_3.setObjectName("spinBox_3")
+        self.gridLayout.addWidget(self.spinBox_3, 2, 0, 1, 1)
+        self.set_servo = QtWidgets.QPushButton(self.gridLayoutWidget)
+        self.set_servo.setObjectName("set_servo")
+        self.gridLayout.addWidget(self.set_servo, 3, 0, 1, 2)
+        self.label_11 = QtWidgets.QLabel(self.gridLayoutWidget)
+        self.label_11.setObjectName("label_11")
+        self.gridLayout.addWidget(self.label_11, 1, 1, 1, 1)
+        self.label_10 = QtWidgets.QLabel(self.gridLayoutWidget)
+        self.label_10.setObjectName("label_10")
+        self.gridLayout.addWidget(self.label_10, 1, 0, 1, 1)
+        self.label_9 = QtWidgets.QLabel(self.gridLayoutWidget)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_9.setFont(font)
+        self.label_9.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_9.setObjectName("label_9")
+        self.gridLayout.addWidget(self.label_9, 0, 0, 1, 2)
+        self.spinBox_4 = QtWidgets.QSpinBox(self.centralwidget)
+        self.spinBox_4.setGeometry(QtCore.QRect(660, 830, 76, 29))
+        self.spinBox_4.setObjectName("spinBox_4")
+        self.horizontalLayoutWidget_4 = QtWidgets.QWidget(self.centralwidget)
+        self.horizontalLayoutWidget_4.setGeometry(QtCore.QRect(30, 720, 165, 80))
+        self.horizontalLayoutWidget_4.setObjectName("horizontalLayoutWidget_4")
+        self.horizontalLayout_3 = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget_4)
+        self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.take_photo = QtWidgets.QPushButton(self.horizontalLayoutWidget_4)
+        self.take_photo.setObjectName("take_photo")
+        self.horizontalLayout_3.addWidget(self.take_photo)
+        self.spinBox_2 = QtWidgets.QSpinBox(self.horizontalLayoutWidget_4)
+        self.spinBox_2.setObjectName("spinBox_2")
+        self.horizontalLayout_3.addWidget(self.spinBox_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -386,7 +448,7 @@ class Ui_MainWindow(object):
         self.init_my_components()
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        
+        self.init_box_logger()
         self.connect_my_signals()
         self.ros_init()
 
@@ -404,9 +466,19 @@ class Ui_MainWindow(object):
         self.back_button.clicked.connect(self.back_button_clicked)
         self.right_button.clicked.connect(self.right_button_clicked)
         self.land_button.clicked.connect(self.land_button_clicked)
+        self.take_photo.clicked.connect(self.take_photo_button_clicked)
+        self.set_servo.clicked.connect(self.set_servo_button_clicked)
 
         self.step_spinBox.valueChanged.connect(self.step_spinBox_changed)
     
+    def take_photo_button_clicked(self):
+        photo_num = self.photo_spinBox.value()
+        self.ros_send_take_photo(photo_num)
+
+    def set_servo_button_clicked(self):
+        self.box_logger.add_log("dupa")
+        print("2")
+
     def step_spinBox_changed(self):
         self.step = float(self.step_spinBox.value()/100)
         print(self.step)
@@ -436,9 +508,20 @@ class Ui_MainWindow(object):
             self.ros_send_takeoff(float(altitude))
         self.down_lineEdit.clear()
 
+    def ros_send_take_photo(self, photos_number=0):
+        self.node.get_logger().info("Sending TAKE-PHOTO request")
+        rclpy.spin_once(self.node, timeout_sec=2)
+        rclpy.spin_once(self.node, timeout_sec=2)
+        request = TakePhoto.Request()
+        request.photos_number = photos_number
+        photo_future = self.photo_cli.call_async(request)
+        rclpy.spin_until_future_complete(self.node, photo_future, timeout_sec=5)
+        self.node.get_logger().info("Photo request sucesfull")
+        
     def ros_send_takeoff(self, altitude=2.0):
         self.node.get_logger().info("Sending TAKE-OFF action goal")
         self.takeoff_button.setStyleSheet("background-color : yellow")
+        rclpy.spin_once(self.node, timeout_sec=0.05)
         goal_msg = Takeoff.Goal()
         goal_msg.altitude = altitude
         while not self.node.takeoff_action_client.wait_for_server():
@@ -468,6 +551,7 @@ class Ui_MainWindow(object):
 
         # Set mode to guided
         self.node.get_logger().info("Sending GUIDED mode request")
+        rclpy.spin_once(self.node, timeout_sec=0.05)
         request = SetMode.Request()
         request.mode = "GUIDED"
         mode_future = self.mode_cli.call_async(request)
@@ -548,6 +632,11 @@ class Ui_MainWindow(object):
         self.takeoff_button.setText(_translate("MainWindow", "Take off"))
         self.land_button.setText(_translate("MainWindow", "Land"))
         self.label_8.setText(_translate("MainWindow", "position"))
+        self.set_servo.setText(_translate("MainWindow", "Set"))
+        self.label_11.setText(_translate("MainWindow", "PWM"))
+        self.label_10.setText(_translate("MainWindow", "Id"))
+        self.label_9.setText(_translate("MainWindow", "Set servo"))
+        self.take_photo.setText(_translate("MainWindow", "Take photos"))
 
 
 def main():
