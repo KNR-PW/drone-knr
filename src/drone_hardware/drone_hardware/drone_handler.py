@@ -47,7 +47,7 @@ class DroneHandler(Node):
             sitl = dronekit_sitl.start_default()
             connection_string = sitl.connection_string()
         baud_rate = 57600
-
+        self.get_logger().info("Connectiong with copter...")
         self.vehicle = connect(connection_string, baud=baud_rate, wait_ready=False) #doesnt work with wait_ready=True
         self.state = "OK"
         self.get_logger().info("Copter connected, ready to arm")
