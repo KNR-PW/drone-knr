@@ -37,13 +37,6 @@ class DroneHandler(Node):
 
         connection_string = "/dev/ttyAMAO"
 
-        sitl = None
-
-        if not connection_string:
-            self.get_logger().info("Start simulator (SITL)")
-            import dronekit_sitl
-            sitl = dronekit_sitl.start_default()
-            connection_string = sitl.connection_string()
         baud_rate = 57600
         self.get_logger().info("Connecting with copter...")
         self.vehicle = connect(connection_string, baud=baud_rate, wait_ready=False) #doesnt work with wait_ready=True
