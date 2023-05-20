@@ -5,43 +5,44 @@ from rclpy.action import ActionClient
 import sys
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, qApp
 from rcl_interfaces.msg import Log
 from PyQt5.QtCore import Qt, QTimer,  QObject, QThread, pyqtSignal
 from drone_interfaces.action import GotoRelative, Takeoff, Arm
 from drone_interfaces.srv import SetYaw, GetAttitude, GetLocationRelative, SetMode, SetServo, TakePhoto
 
 class BoxLogger(QObject):
-    def __init__(self, textBrowser):
+    def __init__(self, textEdit, node):
         super().__init__()
         self.log_info = " LOGGER INIT LOG"
         self.should_run = True
         self.new_log = False
-        self.text_browser = textBrowser
+        self.text_edit = textEdit
+        self.node = node
 
     def run(self):
-        self.text_browser.append(self.log_info)
-        while True:
-            if self.new_log:
-                self.text_browser.append(self.log_info)
-                self.new_log = False
-
+        self.text_edit.append(self.log_info)
+        rclpy.spin(self.node)
     def add_log(self, log):
         self.log_info = log
         self.new_log = True
+    def log_callback(self, cb):
+        print('dupalog')
 
 class Ui_MainWindow(object):
     def __init__(self):
-        self.timer = QTimer()
+        self.ros_timer = QTimer()
+        self.gps_timer = QTimer()
         self.log_signal = pyqtSignal()
         self.log_thread = QThread()
         
-        self.timer.timeout.connect(self.timer_ros_update)
+        self.ros_timer.timeout.connect(self.timer_ros_update)
+        self.gps_timer.timeout.connect(self.gps_timer_update)
         self.step = 0.0
         
     
     def init_box_logger(self):
-        self.box_logger = BoxLogger(self.textBrowser)
+        self.box_logger = BoxLogger(self.log_textEdit, self.node)
         self.log_thread = QThread()
         self.box_logger.moveToThread(self.log_thread)
         self.log_thread.started.connect(self.box_logger.run)
@@ -55,7 +56,8 @@ class Ui_MainWindow(object):
             '/rosout',
             self.log_callback,
             10)
-        self.timer.start(100)
+        self.ros_timer.start(100)
+        self.gps_timer.start(1000)
 
     def ros_init_clients(self):
         ## DECLARE SERVICES
@@ -84,9 +86,12 @@ class Ui_MainWindow(object):
         self.node.goto_rel_action_client.send_goal_async(goal_msg)
         self.node.get_logger().info("Goto action sent")
 
+    def gps_timer_update(self):
+        self.ros_update_position()
+
     def timer_ros_update(self):
         rclpy.spin_once(self.node, timeout_sec=0.05)
-        self.ros_update_position()
+        
 
     def ros_update_position(self):
         request = GetLocationRelative.Request()
@@ -105,7 +110,9 @@ class Ui_MainWindow(object):
             self.textBrowser_2.append(text_msg)
 
     def log_callback(self, log):
-        self.box_logger.add_log(" " + log.name + ": " + log.msg)
+        # self.box_logger.add_log(" " + log.name + ": " + log.msg)
+        self.log_textEdit.append(" " + log.name + ": " + log.msg)
+        QtWidgets.qApp.processEvents()
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -189,12 +196,11 @@ class Ui_MainWindow(object):
         self.forward_button.setIcon(icon3)
         self.forward_button.setObjectName("forward_button")
         self.gridLayout_2.addWidget(self.forward_button, 0, 1, 1, 1)
-        self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
-        self.textBrowser.setGeometry(QtCore.QRect(780, 20, 471, 551))
-        self.textBrowser.setStyleSheet("background-color: rgb(40,30,55);\n"
-                                       "")
-        self.textBrowser.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.textBrowser.setObjectName("textBrowser")
+        self.log_textEdit = QtWidgets.QTextEdit(self.centralwidget)
+        self.log_textEdit.setGeometry(QtCore.QRect(780, 20, 471, 551))
+        self.log_textEdit.setStyleSheet("background-color: rgb(40,30,55);\n"
+"")
+        self.log_textEdit.setObjectName("log_textEdit")
         self.gridLayoutWidget_3 = QtWidgets.QWidget(self.centralwidget)
         self.gridLayoutWidget_3.setGeometry(QtCore.QRect(450, 510, 301, 81))
         self.gridLayoutWidget_3.setObjectName("gridLayoutWidget_3")
@@ -402,12 +408,12 @@ class Ui_MainWindow(object):
         self.gridLayout = QtWidgets.QGridLayout(self.gridLayoutWidget)
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
         self.gridLayout.setObjectName("gridLayout")
-        self.photo_spinBox = QtWidgets.QSpinBox(self.gridLayoutWidget)
-        self.photo_spinBox.setObjectName("photo_spinBox")
-        self.gridLayout.addWidget(self.photo_spinBox, 2, 1, 1, 1)
-        self.spinBox_3 = QtWidgets.QSpinBox(self.gridLayoutWidget)
-        self.spinBox_3.setObjectName("spinBox_3")
-        self.gridLayout.addWidget(self.spinBox_3, 2, 0, 1, 1)
+        self.pwm_spinBox = QtWidgets.QSpinBox(self.gridLayoutWidget)
+        self.pwm_spinBox.setObjectName("pwm_spinBox")
+        self.gridLayout.addWidget(self.pwm_spinBox, 2, 1, 1, 1)
+        self.servo_id_spinBox = QtWidgets.QSpinBox(self.gridLayoutWidget)
+        self.servo_id_spinBox.setObjectName("servo_id_spinBox")
+        self.gridLayout.addWidget(self.servo_id_spinBox, 2, 0, 1, 1)
         self.set_servo = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.set_servo.setObjectName("set_servo")
         self.gridLayout.addWidget(self.set_servo, 3, 0, 1, 2)
@@ -437,9 +443,9 @@ class Ui_MainWindow(object):
         self.take_photo = QtWidgets.QPushButton(self.horizontalLayoutWidget_4)
         self.take_photo.setObjectName("take_photo")
         self.horizontalLayout_3.addWidget(self.take_photo)
-        self.spinBox_2 = QtWidgets.QSpinBox(self.horizontalLayoutWidget_4)
-        self.spinBox_2.setObjectName("spinBox_2")
-        self.horizontalLayout_3.addWidget(self.spinBox_2)
+        self.photo_spinBox = QtWidgets.QSpinBox(self.horizontalLayoutWidget_4)
+        self.photo_spinBox.setObjectName("photo_spinBox")
+        self.horizontalLayout_3.addWidget(self.photo_spinBox)
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -448,13 +454,15 @@ class Ui_MainWindow(object):
         self.init_my_components()
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        self.init_box_logger()
+        
         self.connect_my_signals()
         self.ros_init()
-
+        self.init_box_logger()
     def init_my_components(self):
         self.step_spinBox.setMinimum(0)
         self.step_spinBox.setMaximum(5000)
+
+        self.log_textEdit.setReadOnly(True)
     def connect_my_signals(self):
         self.pushButton.clicked.connect(self.go_button_clicked)
         self.arm_button.clicked.connect(self.arm_button_clicked)
@@ -472,12 +480,19 @@ class Ui_MainWindow(object):
         self.step_spinBox.valueChanged.connect(self.step_spinBox_changed)
     
     def take_photo_button_clicked(self):
+        self.take_photo.setStyleSheet("background-color : yellow")
+        QtWidgets.qApp.processEvents()
+
+        self.node.get_logger().info("Sending TAKE-PHOTO request")
         photo_num = self.photo_spinBox.value()
         self.ros_send_take_photo(photo_num)
 
     def set_servo_button_clicked(self):
-        self.box_logger.add_log("dupa")
-        print("2")
+        self.set_servo.setStyleSheet("background-color : yellow")
+        QtWidgets.qApp.processEvents()
+        id = self.servo_id_spinBox.value()
+        pwm = self.pwm_spinBox.value()
+        self.ros_send_servo(id, pwm)
 
     def step_spinBox_changed(self):
         self.step = float(self.step_spinBox.value()/100)
@@ -498,9 +513,14 @@ class Ui_MainWindow(object):
 
     def down_button_clicked(self):
         self.ros_send_goto_relative(0.0, 0.0, self.step)
+
     def land_button_clicked(self):
         pass
+
     def takeoff_button_clicked(self):
+        self.takeoff_button.setStyleSheet("background-color : yellow")
+        QtWidgets.qApp.processEvents()
+
         altitude = self.down_lineEdit.text() or "2"
         if not altitude.lstrip('-').isdigit():
             self.error_popup()
@@ -508,19 +528,35 @@ class Ui_MainWindow(object):
             self.ros_send_takeoff(float(altitude))
         self.down_lineEdit.clear()
 
+    def ros_send_servo(self, id, pwm):
+        self.node.get_logger().info("Sending SERVO request")
+        request = SetServo.Request()
+        request.servo_id = id
+        request.pwm = pwm
+        servo_future = self.servo_cli.call_async(request)
+        timeout_ret = rclpy.spin_until_future_complete(self.node, servo_future, timeout_sec=1)
+        if timeout_ret:
+            self.node.get_logger().info("Servo request finished")
+            self.set_servo.setStyleSheet("background-color : green")
+        else:
+            self.node.get_logger().info("Servo request failed")
+            self.set_servo.setStyleSheet("background-color : red")
+
+
     def ros_send_take_photo(self, photos_number=0):
-        self.node.get_logger().info("Sending TAKE-PHOTO request")
-        rclpy.spin_once(self.node, timeout_sec=2)
-        rclpy.spin_once(self.node, timeout_sec=2)
         request = TakePhoto.Request()
         request.photos_number = photos_number
         photo_future = self.photo_cli.call_async(request)
-        rclpy.spin_until_future_complete(self.node, photo_future, timeout_sec=5)
-        self.node.get_logger().info("Photo request sucesfull")
-        
+        timeout_ret = rclpy.spin_until_future_complete(self.node, photo_future, timeout_sec=3)
+        if timeout_ret:
+            self.node.get_logger().info("Photo request sucseed")
+            self.take_photo.setStyleSheet("background-color : green")
+        else:
+            self.node.get_logger().info("Photo request failed")
+            self.take_photo.setStyleSheet("background-color : red")
+
     def ros_send_takeoff(self, altitude=2.0):
         self.node.get_logger().info("Sending TAKE-OFF action goal")
-        self.takeoff_button.setStyleSheet("background-color : yellow")
         rclpy.spin_once(self.node, timeout_sec=0.05)
         goal_msg = Takeoff.Goal()
         goal_msg.altitude = altitude
@@ -548,14 +584,12 @@ class Ui_MainWindow(object):
 
     def arm_button_clicked(self):
         self.arm_button.setStyleSheet("background-color : yellow")
-
         # Set mode to guided
         self.node.get_logger().info("Sending GUIDED mode request")
-        rclpy.spin_once(self.node, timeout_sec=0.05)
         request = SetMode.Request()
         request.mode = "GUIDED"
         mode_future = self.mode_cli.call_async(request)
-        rclpy.spin_until_future_complete(self.node, mode_future)
+        rclpy.spin_until_future_complete(self.node, mode_future, timeout_sec=10)
         self.node.get_logger().info("Mode request sucesfull")
 
         # ARM drone
@@ -613,13 +647,6 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.label_4.setText(_translate("MainWindow", "KNR Drone control"))
         self.label_5.setText(_translate("MainWindow", "Go to position"))
-        self.textBrowser.setHtml(_translate("MainWindow",
-                                            "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-                                            "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-                                            "p, li { white-space: pre-wrap; }\n"
-                                            "</style></head><body style=\" font-family:\'Ubuntu\'; font-size:11pt; font-weight:400; font-style:normal;\">\n"
-                                            "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n"
-                                            "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.up_button.setText(_translate("MainWindow", " UP"))
         self.down_button.setText(_translate("MainWindow", " DOWN"))
         self.pushButton.setText(_translate("MainWindow", "GO"))
