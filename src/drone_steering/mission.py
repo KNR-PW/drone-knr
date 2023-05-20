@@ -77,6 +77,25 @@ class DroneMission:
             time.sleep(1)
 
         return None
+    
+
+    def condition_yaw(self, heading, relative=False): # set relative to true if you want to set it relatively to current yaw
+        if relative:
+            is_relative = 1 #yaw relative to direction of travel
+        else:
+            is_relative = 0 #yaw is an absolute angle
+        # create the CONDITION_YAW command using command_long_encode()
+        msg = self.vehicle.message_factory.command_long_encode(
+            0, 0,    # target system, target component
+            mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
+            0, #confirmation
+            heading,    # param 1, yaw in degrees
+            0,          # param 2, yaw speed deg/s
+            1,          # param 3, direction -1 ccw, 1 cw
+            is_relative, # param 4, relative offset 1, absolute angle 0
+            0, 0, 0)    # param 5 ~ 7 not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
 
 
     def goto_position_target_global_int(self, aLocation):
@@ -181,23 +200,23 @@ class DroneMission:
         drone_yaw = self.vehicle.attitude.yaw
         drone_amplitude = -self.vehicle.location.local_frame.down
 
-        cam_range=(math.tan(HFOV)*drone_amplitude,math.tan(VFOV)*drone_amplitude)
+        self.cam_range=(math.tan(HFOV)*drone_amplitude,math.tan(VFOV)*drone_amplitude)
 
         # cam_range1=(math.tan(HFOV)*15,math.tan(VFOV)*15)
 
-        print(cam_range)
+        print(self.cam_range)
 
-        cam_n_l = (int(cam_range[0]/4))+1 # camera number of circles, length
+        cam_n_l = (int(self.cam_range[0]/4))+1 # camera number of circles, length
         print("longer side camera circles: ", cam_n_l)
 
-        cam_n_w = (int(cam_range[1]/4))+1 # camera number of circles, width
+        cam_n_w = (int(self.cam_range[1]/4))+1 # camera number of circles, width
         print("shorter side camera circles: ", cam_n_w)
 
         cam_circles = cam_n_l*cam_n_w
 
         print("camera circles for attitude of ", round(-self.vehicle.location.local_frame.down), " metres is: ", cam_circles)
 
-        target_pos_rel=np.multiply(np.divide(detection, img_res), cam_range)
+        target_pos_rel=np.multiply(np.divide(detection, img_res), self.cam_range)
 
         self.detections.append(drone_pos+np.matmul(Rot(drone_yaw), target_pos_rel))
 
@@ -205,6 +224,60 @@ class DroneMission:
 
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
+
+    # vectors for one side, in local system - let's say we fly through the points (given in global) and pass them into here:
+    def local_circles(self, l_coordrd, l_coordld, l_coordlu):
+        length = get_distance_metres_ned(l_coordrd, l_coordld)
+        width = get_distance_metres_ned(l_coordld, l_coordlu)
+
+        print("length local: ", length)
+        print("width local: ", width)
+
+        current_yaw = self.vehicle.attitude.yaw
+
+        if length > width:
+            self.condition_yaw(current_yaw, False)
+        else:
+            self.condition_yaw(current_yaw-90, False)
+
+
+        n_length = (round(length/4))+1
+        print("number of circles from right to left: ", n_length)
+
+        n_width = (round(width/4))+1
+        print("number of circles from down to up: ", n_width)
+
+        n_circles = n_width*n_length
+
+        if n_circles != 100:
+            print("wrong number of circles, something's wrong")
+
+
+        # cam_circles = 15 
+
+        cam_range_l = self.cam_range[0]-1 # one meter cut for better accuracy
+        cam_range_w = self.cam_range[1]-1
+
+
+        l_tours = round(length/cam_range_l)
+        w_tours = round(width/cam_range_w)
+
+
+        self.pos_change(-cam_range_l/2, -cam_range_w/2, 0) # odsuniecie od kąta
+        
+        k = 1
+
+        for i in range(w_tours):
+            for j in range(l_tours):
+                self.pos_change(k*-cam_range_l, 0, 0)
+            self.pos_change(0, -cam_range_w, 0)
+            k = -k
+            
+        # teraz to trzeba przepisać na wektor i go przemnożyć razy macierz obrotu
+
+
+        # tours = round(n_circles/cam_circles)
+        # print("tours to make: ", tours)
 
 
 def Rot(yaw):
@@ -235,7 +308,7 @@ def get_distance_metres_ned(aLocation1, aLocation2):
     return math.sqrt((dnorth*dnorth) + (deast*deast))
 
 
-def create_orchard(coordrd, coordld, coordlu): #rd is right down and so on
+def create_orchard(coordrd, coordld, coordlu): #rd is right down and so on, for global use
     length = get_dist(coordrd, coordld)
     width = get_dist(coordld, coordlu)
 
@@ -266,56 +339,29 @@ def create_orchard(coordrd, coordld, coordlu): #rd is right down and so on
     # print(circles)
 
 
-# vectors for one side, in local system - let's say we fly through the points (given in global) and pass them into here:
-def local_circles(l_coordrd, l_coordld, l_coordlu):
-    length = get_distance_metres_ned(l_coordrd, l_coordld)
-    width = get_distance_metres_ned(l_coordld, l_coordlu)
-
-    print("length local: ", length)
-    print("width local: ", width)
-
-    n_length = (round(length/4))+1
-    print("number of circles from right to left: ", n_length)
-
-    n_width = (round(width/4))+1
-    print("number of circles from down to up: ", n_width)
-
-    n_circles = n_width*n_length
-
-    if n_circles != 100:
-        print("wrong number of circles, something's wrong")
-
-
-    cam_circles = 15 # figure out a way to pass a value here from det2pos
-
-    tours = round(n_circles/cam_circles)
-    print("tours to make: ", tours)
-
 
 def next_circle(self, circle_pos = LocationLocal):
     pass
 
 
 def main():
-    # type the lower right corner of the map, then lower left, then higher left
-    coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=11)
-    coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=11)
-    coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=11)
-
-
     drone = DroneMission()
 
-    alt = 11
-    drone.arm_and_takeoff(alt)
+    altit = 10
+    drone.arm_and_takeoff(altit)
 
     time.sleep(2)
+
+
+    coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
+    coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
+    coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
 
     # create_orchard(coordrd, coordld, coordlu)
 
     drone.goto_global(coordrd)
     time.sleep(1)
-    coord1 = drone.vehicle.location.local_frame
-
+    coord1 = drone.vehicle.location.local_frame # rd
 
     # # drone.pos_change(0,-16,0)
     # # home = LocationLocal(north=5, east = -18, down = -alt)
@@ -323,18 +369,20 @@ def main():
 
     drone.goto_global(coordld)
     time.sleep(1)
-    coord2 = drone.vehicle.location.local_frame
-
+    coord2 = drone.vehicle.location.local_frame #ld
 
     # # time.sleep(3)
     # # print("right down pos: ", drone.vehicle.location.global_frame)
 
     drone.goto_global(coordlu)
     time.sleep(1)
-    coord3 = drone.vehicle.location.local_frame
+    coord3 = drone.vehicle.location.local_frame # lu
 
+    drone.det2pos()
 
-    local_circles(coord1, coord2, coord3)
+    drone.local_circles(coord1, coord2, coord3)
+
+    
 
     # coord3 = LocationLocal(north=41, east = -18, down = -alt)
     # drone.goto_position_ned(coord3)
