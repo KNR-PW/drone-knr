@@ -16,6 +16,7 @@ class Ui_MainWindow(object):
     def __init__(self):
         self.timer = QTimer()
         self.timer.timeout.connect(self.timer_ros_update)
+        self.step = 0.0
 
     def ros_init(self):
         rclpy.init(args=None)
@@ -66,9 +67,27 @@ class Ui_MainWindow(object):
 
     def timer_ros_update(self):
         rclpy.spin_once(self.node, timeout_sec=0.05)
+        self.ros_update_position()
+
+    def ros_update_position(self):
+        request = GetLocationRelative.Request()
+        gps_future = self.gps_cli.call_async(request)
+        rclpy.spin_until_future_complete(self.node, gps_future, timeout_sec=0.3)
+        north = round(gps_future.result().north, 2)
+        east = round(gps_future.result().east, 2)
+        down = round(gps_future.result().down, 2)
+        self.textBrowser_2.clear()
+        # text_msg = "North: " + str(north) + "  East: " + str(east) + "  Down: " + str(down)
+        # self.textBrowser_2.append(text_msg)
+        text_msg = " North: " + str(north)
+        self.textBrowser_2.append(text_msg)
+        text_msg = " East: " + str(east) 
+        self.textBrowser_2.append(text_msg)
+        text_msg = " Down: " + str(down)
+        self.textBrowser_2.append(text_msg)
 
     def log_callback(self, log):
-        self.textBrowser.append(log.name + ": " + log.msg)
+        self.textBrowser.append(" " + log.name + ": " + log.msg)
 
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -101,57 +120,57 @@ class Ui_MainWindow(object):
         self.gridLayout_2 = QtWidgets.QGridLayout(self.gridLayoutWidget_2)
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
         self.gridLayout_2.setObjectName("gridLayout_2")
-        self.pushButton_9 = QtWidgets.QPushButton(self.gridLayoutWidget_2)
-        self.pushButton_9.setEnabled(True)
+        self.left_button = QtWidgets.QPushButton(self.gridLayoutWidget_2)
+        self.left_button.setEnabled(True)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButton_9.sizePolicy().hasHeightForWidth())
-        self.pushButton_9.setSizePolicy(sizePolicy)
-        self.pushButton_9.setText("")
+        sizePolicy.setHeightForWidth(self.left_button.sizePolicy().hasHeightForWidth())
+        self.left_button.setSizePolicy(sizePolicy)
+        self.left_button.setText("")
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap("../../../../../Downloads/left.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.pushButton_9.setIcon(icon)
-        self.pushButton_9.setIconSize(QtCore.QSize(20, 20))
-        self.pushButton_9.setObjectName("pushButton_9")
-        self.gridLayout_2.addWidget(self.pushButton_9, 1, 0, 1, 1)
-        self.pushButton_2 = QtWidgets.QPushButton(self.gridLayoutWidget_2)
+        self.left_button.setIcon(icon)
+        self.left_button.setIconSize(QtCore.QSize(20, 20))
+        self.left_button.setObjectName("left_button")
+        self.gridLayout_2.addWidget(self.left_button, 1, 0, 1, 1)
+        self.right_button = QtWidgets.QPushButton(self.gridLayoutWidget_2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButton_2.sizePolicy().hasHeightForWidth())
-        self.pushButton_2.setSizePolicy(sizePolicy)
-        self.pushButton_2.setText("")
+        sizePolicy.setHeightForWidth(self.right_button.sizePolicy().hasHeightForWidth())
+        self.right_button.setSizePolicy(sizePolicy)
+        self.right_button.setText("")
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap("../../../../../Downloads/right-arrow-svgrepo-com.svg"), QtGui.QIcon.Normal,
                         QtGui.QIcon.Off)
-        self.pushButton_2.setIcon(icon1)
-        self.pushButton_2.setObjectName("pushButton_2")
-        self.gridLayout_2.addWidget(self.pushButton_2, 1, 2, 1, 1)
-        self.pushButton_5 = QtWidgets.QPushButton(self.gridLayoutWidget_2)
+        self.right_button.setIcon(icon1)
+        self.right_button.setObjectName("right_button")
+        self.gridLayout_2.addWidget(self.right_button, 1, 2, 1, 1)
+        self.back_button = QtWidgets.QPushButton(self.gridLayoutWidget_2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButton_5.sizePolicy().hasHeightForWidth())
-        self.pushButton_5.setSizePolicy(sizePolicy)
-        self.pushButton_5.setText("")
+        sizePolicy.setHeightForWidth(self.back_button.sizePolicy().hasHeightForWidth())
+        self.back_button.setSizePolicy(sizePolicy)
+        self.back_button.setText("")
         icon2 = QtGui.QIcon()
         icon2.addPixmap(QtGui.QPixmap("../../../../../Downloads/down.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.pushButton_5.setIcon(icon2)
-        self.pushButton_5.setObjectName("pushButton_5")
-        self.gridLayout_2.addWidget(self.pushButton_5, 3, 1, 1, 1)
-        self.pushButton_6 = QtWidgets.QPushButton(self.gridLayoutWidget_2)
+        self.back_button.setIcon(icon2)
+        self.back_button.setObjectName("back_button")
+        self.gridLayout_2.addWidget(self.back_button, 3, 1, 1, 1)
+        self.forward_button = QtWidgets.QPushButton(self.gridLayoutWidget_2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButton_6.sizePolicy().hasHeightForWidth())
-        self.pushButton_6.setSizePolicy(sizePolicy)
-        self.pushButton_6.setText("")
+        sizePolicy.setHeightForWidth(self.forward_button.sizePolicy().hasHeightForWidth())
+        self.forward_button.setSizePolicy(sizePolicy)
+        self.forward_button.setText("")
         icon3 = QtGui.QIcon()
         icon3.addPixmap(QtGui.QPixmap("../../../../../Downloads/up.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.pushButton_6.setIcon(icon3)
-        self.pushButton_6.setObjectName("pushButton_6")
-        self.gridLayout_2.addWidget(self.pushButton_6, 0, 1, 1, 1)
+        self.forward_button.setIcon(icon3)
+        self.forward_button.setObjectName("forward_button")
+        self.gridLayout_2.addWidget(self.forward_button, 0, 1, 1, 1)
         self.textBrowser = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser.setGeometry(QtCore.QRect(780, 20, 471, 551))
         self.textBrowser.setStyleSheet("background-color: rgb(40,30,55);\n"
@@ -164,34 +183,34 @@ class Ui_MainWindow(object):
         self.gridLayout_3 = QtWidgets.QGridLayout(self.gridLayoutWidget_3)
         self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
         self.gridLayout_3.setObjectName("gridLayout_3")
-        self.pushButton_8 = QtWidgets.QPushButton(self.gridLayoutWidget_3)
+        self.up_button = QtWidgets.QPushButton(self.gridLayoutWidget_3)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButton_8.sizePolicy().hasHeightForWidth())
-        self.pushButton_8.setSizePolicy(sizePolicy)
+        sizePolicy.setHeightForWidth(self.up_button.sizePolicy().hasHeightForWidth())
+        self.up_button.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
         font.setPointSize(13)
         font.setBold(True)
         font.setWeight(75)
-        self.pushButton_8.setFont(font)
-        self.pushButton_8.setIcon(icon3)
-        self.pushButton_8.setObjectName("pushButton_8")
-        self.gridLayout_3.addWidget(self.pushButton_8, 0, 0, 1, 1)
-        self.pushButton_7 = QtWidgets.QPushButton(self.gridLayoutWidget_3)
+        self.up_button.setFont(font)
+        self.up_button.setIcon(icon3)
+        self.up_button.setObjectName("up_button")
+        self.gridLayout_3.addWidget(self.up_button, 0, 0, 1, 1)
+        self.down_button = QtWidgets.QPushButton(self.gridLayoutWidget_3)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.pushButton_7.sizePolicy().hasHeightForWidth())
-        self.pushButton_7.setSizePolicy(sizePolicy)
+        sizePolicy.setHeightForWidth(self.down_button.sizePolicy().hasHeightForWidth())
+        self.down_button.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
         font.setPointSize(13)
         font.setBold(True)
         font.setWeight(75)
-        self.pushButton_7.setFont(font)
-        self.pushButton_7.setIcon(icon2)
-        self.pushButton_7.setObjectName("pushButton_7")
-        self.gridLayout_3.addWidget(self.pushButton_7, 0, 1, 1, 1)
+        self.down_button.setFont(font)
+        self.down_button.setIcon(icon2)
+        self.down_button.setObjectName("down_button")
+        self.gridLayout_3.addWidget(self.down_button, 0, 1, 1, 1)
         self.gridLayoutWidget_4 = QtWidgets.QWidget(self.centralwidget)
         self.gridLayoutWidget_4.setGeometry(QtCore.QRect(30, 210, 395, 391))
         self.gridLayoutWidget_4.setObjectName("gridLayoutWidget_4")
@@ -295,19 +314,19 @@ class Ui_MainWindow(object):
         self.label_2.setAlignment(QtCore.Qt.AlignCenter)
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
-        self.spinBox = QtWidgets.QSpinBox(self.horizontalLayoutWidget)
+        self.step_spinBox = QtWidgets.QSpinBox(self.horizontalLayoutWidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.spinBox.sizePolicy().hasHeightForWidth())
-        self.spinBox.setSizePolicy(sizePolicy)
+        sizePolicy.setHeightForWidth(self.step_spinBox.sizePolicy().hasHeightForWidth())
+        self.step_spinBox.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
         font.setPointSize(15)
-        self.spinBox.setFont(font)
-        self.spinBox.setStyleSheet("background-color: rgb(40,30,55);")
-        self.spinBox.setAlignment(QtCore.Qt.AlignCenter)
-        self.spinBox.setObjectName("spinBox")
-        self.horizontalLayout.addWidget(self.spinBox)
+        self.step_spinBox.setFont(font)
+        self.step_spinBox.setStyleSheet("background-color: rgb(40,30,55);")
+        self.step_spinBox.setAlignment(QtCore.Qt.AlignCenter)
+        self.step_spinBox.setObjectName("step_spinBox")
+        self.horizontalLayout.addWidget(self.step_spinBox)
         self.label_7 = QtWidgets.QLabel(self.centralwidget)
         self.label_7.setGeometry(QtCore.QRect(440, 130, 301, 61))
         font = QtGui.QFont()
@@ -329,9 +348,9 @@ class Ui_MainWindow(object):
         self.takeoff_button = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
         self.takeoff_button.setObjectName("takeoff_button")
         self.horizontalLayout_2.addWidget(self.takeoff_button)
-        self.pushButton_10 = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
-        self.pushButton_10.setObjectName("pushButton_10")
-        self.horizontalLayout_2.addWidget(self.pushButton_10)
+        self.land_button = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
+        self.land_button.setObjectName("land_button")
+        self.horizontalLayout_2.addWidget(self.land_button)
         self.horizontalLayoutWidget_3 = QtWidgets.QWidget(self.centralwidget)
         self.horizontalLayoutWidget_3.setGeometry(QtCore.QRect(780, 580, 471, 87))
         self.horizontalLayoutWidget_3.setObjectName("horizontalLayoutWidget_3")
@@ -364,17 +383,51 @@ class Ui_MainWindow(object):
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
+        self.init_my_components()
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
+        
         self.connect_my_signals()
         self.ros_init()
 
+    def init_my_components(self):
+        self.step_spinBox.setMinimum(0)
+        self.step_spinBox.setMaximum(5000)
     def connect_my_signals(self):
         self.pushButton.clicked.connect(self.go_button_clicked)
         self.arm_button.clicked.connect(self.arm_button_clicked)
         self.takeoff_button.clicked.connect(self.takeoff_button_clicked)
+        self.left_button.clicked.connect(self.left_button_clicked)
+        self.up_button.clicked.connect(self.up_button_clicked)
+        self.down_button.clicked.connect(self.down_button_clicked)
+        self.forward_button.clicked.connect(self.forward_button_clicked)
+        self.back_button.clicked.connect(self.back_button_clicked)
+        self.right_button.clicked.connect(self.right_button_clicked)
+        self.land_button.clicked.connect(self.land_button_clicked)
 
+        self.step_spinBox.valueChanged.connect(self.step_spinBox_changed)
+    
+    def step_spinBox_changed(self):
+        self.step = float(self.step_spinBox.value()/100)
+        print(self.step)
+
+    def left_button_clicked(self):
+        self.ros_send_goto_relative(0.0, -self.step, 0.0)
+    def right_button_clicked(self):
+        self.ros_send_goto_relative(0.0, self.step, 0.0)
+       
+    def forward_button_clicked(self):
+        self.ros_send_goto_relative(self.step, 0.0, 0.0)
+
+    def back_button_clicked(self):
+        self.ros_send_goto_relative(-self.step, 0.0, 0.0)
+    def up_button_clicked(self):
+        self.ros_send_goto_relative(0.0, 0.0, -self.step)
+
+    def down_button_clicked(self):
+        self.ros_send_goto_relative(0.0, 0.0, self.step)
+    def land_button_clicked(self):
+        pass
     def takeoff_button_clicked(self):
         altitude = self.down_lineEdit.text() or "2"
         if not altitude.lstrip('-').isdigit():
@@ -411,8 +464,18 @@ class Ui_MainWindow(object):
             self.node.get_logger().info('Takeoff request error')
 
     def arm_button_clicked(self):
-        self.node.get_logger().info("Sending ARM action goal")
         self.arm_button.setStyleSheet("background-color : yellow")
+
+        # Set mode to guided
+        self.node.get_logger().info("Sending GUIDED mode request")
+        request = SetMode.Request()
+        request.mode = "GUIDED"
+        mode_future = self.mode_cli.call_async(request)
+        rclpy.spin_until_future_complete(self.node, mode_future)
+        self.node.get_logger().info("Mode request sucesfull")
+
+        # ARM drone
+        self.node.get_logger().info("Sending ARM action goal")
 
         goal_msg = Arm.Goal()
 
@@ -473,8 +536,8 @@ class Ui_MainWindow(object):
                                             "</style></head><body style=\" font-family:\'Ubuntu\'; font-size:11pt; font-weight:400; font-style:normal;\">\n"
                                             "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n"
                                             "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
-        self.pushButton_8.setText(_translate("MainWindow", " UP"))
-        self.pushButton_7.setText(_translate("MainWindow", " DOWN"))
+        self.up_button.setText(_translate("MainWindow", " UP"))
+        self.down_button.setText(_translate("MainWindow", " DOWN"))
         self.pushButton.setText(_translate("MainWindow", "GO"))
         self.label_3.setText(_translate("MainWindow", "Down (z)"))
         self.label_6.setText(_translate("MainWindow", "North (x)"))
@@ -483,7 +546,7 @@ class Ui_MainWindow(object):
         self.label_7.setText(_translate("MainWindow", "Move"))
         self.arm_button.setText(_translate("MainWindow", "Arm"))
         self.takeoff_button.setText(_translate("MainWindow", "Take off"))
-        self.pushButton_10.setText(_translate("MainWindow", "Land"))
+        self.land_button.setText(_translate("MainWindow", "Land"))
         self.label_8.setText(_translate("MainWindow", "position"))
 
 
