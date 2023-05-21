@@ -51,7 +51,7 @@ class DetectorServer(Node):
         self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
         self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
         self.frames_pub = self.create_publisher(Image, "/camera", 10)
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        # self.timer = self.create_timer(0.1, self.timer_callback)
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
