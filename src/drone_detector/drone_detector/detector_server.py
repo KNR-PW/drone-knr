@@ -84,7 +84,7 @@ class DetectorServer(Node):
 
     def detect_trees_callback(self, request, response):
         self.get_logger().info('Incoming detection request')
-        self.read_frame()  # TODO
+        self.read_frame()
         self.detection(self.frame)
         self.detections_to_msg()
         response.detections_list = self.detections_list_msg
