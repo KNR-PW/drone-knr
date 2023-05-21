@@ -27,7 +27,7 @@ class ImagePublisher(Node):
 
         # Create the publisher. This publisher will publish an Image
         # to the video_frames topic. The queue size is 10 messages.
-        self.publisher_ = self.create_publisher(Image, 'video_frames', 10)
+        self.publisher_ = self.create_publisher(Image, 'camera', 10)
 
         # We will publish a message every 0.1 seconds
         timer_period = 0.1  # seconds
@@ -37,7 +37,7 @@ class ImagePublisher(Node):
 
         # Create a VideoCapture object
         # The argument '0' gets the default webcam.
-
+        self.img = cv2.imread('dumb.jpg', cv2.IMREAD_COLOR)
         self.cap = cv2.VideoCapture(
             "/home/stas/Dron/KNRDron/rosDron/install/drone_detector/lib/drone_detector/car_counting.mp4")
 
@@ -61,7 +61,7 @@ class ImagePublisher(Node):
             # The 'cv2_to_imgmsg' method converts an OpenCV
             # image to a ROS 2 image message
             frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
-            self.publisher_.publish(self.br.cv2_to_imgmsg(frame))
+            self.publisher_.publish(self.br.cv2_to_imgmsg(self.img))
 
             # Display the message on the console
             self.get_logger().info('Publishing video frame')
