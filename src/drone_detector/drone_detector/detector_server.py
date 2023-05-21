@@ -119,7 +119,7 @@ class DetectorServer(Node):
     def read_frame(self):
         ret, frame = self.video_capture.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
+        self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
 
     def detections_to_msg(self):
         temp_detection_list_msg = DetectionsList()
