@@ -35,7 +35,7 @@ class DroneHandler(Node):
         ##CONNECT TO COPTER
 
 
-        connection_string = "/dev/ttyS1"
+        connection_string = "/dev/serial0"
         baud_rate = 57600
         self.get_logger().info("Connecting with copter...")
         self.vehicle = connect(connection_string, baud=baud_rate, wait_ready=False) #doesnt work with wait_ready=True
