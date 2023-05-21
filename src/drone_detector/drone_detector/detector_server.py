@@ -6,9 +6,10 @@ import cv2  # OpenCV library
 import numpy as np
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
-from drone_interfaces.srv import DetectTrees, TakePhoto
+from drone_interfaces.srv import DetectTrees, TakePhoto, GetLocationRelative
 from std_msgs.msg import Int32MultiArray
 import os
+import math
 
 
 class Detection:
@@ -48,6 +49,9 @@ class DetectorServer(Node):
 
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
         self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
+        self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
+        self.frames_pub = self.create_publisher(Image, "/camera", 10)
+        self.timer = self.create_timer(0.1, self.timer_callback)
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
@@ -65,6 +69,12 @@ class DetectorServer(Node):
             self.get_logger().info('Waiting for camera video cpture to open...')
         _, self.frame = self.video_capture.read()
 
+    def timer_callback(self):
+        ret, frame = self.video_capture.read()
+        if ret:
+            frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
+
+            self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
     def take_photo_callback(self, request, response):
         photos_number = request.photos_number
         print(os.path.abspath(__file__))
@@ -84,7 +94,7 @@ class DetectorServer(Node):
 
     def detect_trees_callback(self, request, response):
         self.get_logger().info('Incoming detection request')
-        self.read_frame()  # TODO
+        self.read_frame()
         self.detection(self.frame)
         self.detections_to_msg()
         response.detections_list = self.detections_list_msg
@@ -101,7 +111,7 @@ class DetectorServer(Node):
         print(self.thresholds)
 
     def detection(self, frame):
-        # self.get_logger().info('Receiving video frame and detecting')
+        self.get_logger().info('Detecting...')
         self.detections.clear()
 
         # Detection
@@ -114,9 +124,14 @@ class DetectorServer(Node):
                 area = cv2.contourArea(cnt)
                 if area > 200:
                     x, y, w, h = cv2.boundingRect(cnt)
+                    self.update_position()
+                    pos = self.det2pos((x, y, w, h))
+                    self.get_logger().info(f"Detection pos: {pos}")
+                    print(pos)
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
 
     def read_frame(self):
+        self.get_logger().info('Reading frame')
         ret, frame = self.video_capture.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
@@ -138,6 +153,40 @@ class DetectorServer(Node):
 
         self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
 
+    def Rot(self, yaw):
+        yaw = math.radians(yaw)
+        res = np.matrix([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
+        return res
+
+    def update_position(self):
+        self.get_logger().info('Sending GPS request')
+        request_gps = GetLocationRelative.Request()
+        gps_future = self.gps_cli.call_async(request_gps)
+        rclpy.spin_until_future_complete(self, gps_future, timeout_sec=0.5)
+        if gps_future.result() is not None:
+            self.north = gps_future.result().north
+            self.east = gps_future.result().east
+            self.down = gps_future.result().down
+            self.drone_amplitude = -self.down
+            self.get_logger().info('GPS Recieved')
+        else:
+            self.get_logger().info('GPS request failed')
+            self.drone_amplitude = 0
+
+    def det2pos(self, bounding_box):
+
+        HFOV=math.radians(62.2)
+        VFOV=math.radians(48.8)
+        x, y, w, h = bounding_box
+        detection = (x + w/2, y + h/2)
+
+        cam_range=(math.tan(HFOV)*self.drone_amplitude,math.tan(VFOV)*self.drone_amplitude)
+
+
+        target_pos_rel=np.multiply(np.divide(detection, self.img_size), cam_range)
+        print("position")
+        print(target_pos_rel)
+        return target_pos_rel
 
 def main(args=None):
     rclpy.init(args=args)
