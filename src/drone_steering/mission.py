@@ -37,10 +37,6 @@ class DroneMission:
         return None
 
 
-    def __str__(self):
-        return None
-
-
     def arm_and_takeoff(self, aTargetAltitude):
         """
         Arms vehicle and flies to aTargetAltitude.
@@ -99,7 +95,6 @@ class DroneMission:
 
 
     def goto_position_target_global_int(self, aLocation):
-    
         msg = self.vehicle.message_factory.set_position_target_global_int_encode(
             0,       # time_boot_ms (not used)
             0, 0,    # target system, target component
@@ -186,7 +181,6 @@ class DroneMission:
 
 
     def det2pos(self):
-
         img_res=np.array((640,480))
 
         detection=np.array((245,23))
@@ -202,6 +196,10 @@ class DroneMission:
 
         self.cam_range=(math.tan(HFOV)*drone_amplitude,math.tan(VFOV)*drone_amplitude)
 
+        target_pos_rel=np.multiply(np.divide(detection, img_res), self.cam_range)
+
+        self.detections.append(drone_pos+np.matmul(Rot(drone_yaw), target_pos_rel))
+
         # cam_range1=(math.tan(HFOV)*15,math.tan(VFOV)*15)
 
         print(self.cam_range)
@@ -213,17 +211,13 @@ class DroneMission:
         print("shorter side camera circles: ", cam_n_w)
 
         cam_circles = cam_n_l*cam_n_w
-
         print("camera circles for attitude of ", round(-self.vehicle.location.local_frame.down), " metres is: ", cam_circles)
-
-        target_pos_rel=np.multiply(np.divide(detection, img_res), self.cam_range)
-
-        self.detections.append(drone_pos+np.matmul(Rot(drone_yaw), target_pos_rel))
 
         # ekf origin czy home
 
         # cv2.waitKey(0)
         # cv2.destroyAllWindows()
+        
 
     # vectors for one side, in local system - let's say we fly through the points (given in global) and pass them into here:
     def local_circles(self, l_coordrd, l_coordld, l_coordlu):
@@ -233,13 +227,10 @@ class DroneMission:
         print("length local: ", length)
         print("width local: ", width)
 
-        current_yaw = self.vehicle.attitude.yaw
-
-        if length > width:
-            self.condition_yaw(current_yaw, False)
-        else:
-            self.condition_yaw(current_yaw-90, False)
-
+        # if length > width:
+        #     self.condition_yaw(current_yaw, False)
+        # else:
+        #     self.condition_yaw(current_yaw+90, False)
 
         n_length = (round(length/4))+1
         print("number of circles from right to left: ", n_length)
@@ -253,36 +244,42 @@ class DroneMission:
             print("wrong number of circles, something's wrong")
 
 
-        # cam_circles = 15 
-
         cam_range_l = self.cam_range[0]-1 # one meter cut for better accuracy
         cam_range_w = self.cam_range[1]-1
-
 
         l_tours = round(length/cam_range_l)
         w_tours = round(width/cam_range_w)
 
+        current_yaw = self.vehicle.attitude.yaw
 
-        self.pos_change(-cam_range_l/2, -cam_range_w/2, 0) # odsuniecie od kąta
+        delta = rotate_vector(cam_range_l, cam_range_w, current_yaw)
+
+        self.pos_change(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
         
         k = 1
 
         for i in range(w_tours):
             for j in range(l_tours):
-                self.pos_change(k*-cam_range_l, 0, 0)
-            self.pos_change(0, -cam_range_w, 0)
+                self.pos_change(k*-delta[1,0], 0, 0)
+
+                # 
+            self.pos_change(0, -delta[0,0], 0)
             k = -k
-            
-        # teraz to trzeba przepisać na wektor i go przemnożyć razy macierz obrotu
 
 
-        # tours = round(n_circles/cam_circles)
-        # print("tours to make: ", tours)
+def rotate_vector(north, east, yaw):
+        yaw = -yaw # because yaw is clockwise in dronekit
+        r = np.matrix([[east],
+                      [north]])
+        
+        rotated = np.matmul(Rot(yaw),r)
+        return rotated
 
 
 def Rot(yaw):
         yaw = math.radians(yaw)
-        res = np.matrix([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
+        res = np.matrix([[math.cos(yaw), -math.sin(yaw)], 
+                         [math.sin(yaw), math.cos(yaw)]])
         return res
 
 
@@ -308,38 +305,6 @@ def get_distance_metres_ned(aLocation1, aLocation2):
     return math.sqrt((dnorth*dnorth) + (deast*deast))
 
 
-def create_orchard(coordrd, coordld, coordlu): #rd is right down and so on, for global use
-    length = get_dist(coordrd, coordld)
-    width = get_dist(coordld, coordlu)
-
-    print("length: ", length)
-    print("width: ", width)
-
-    n_length = (round(length/4))+1
-    print("number of circles from right to left: ", n_length)
-
-    n_width = (round(width/4))+1
-    print("number of circles from down to up: ", n_width)
-
-    n_circles = n_width*n_length
-
-    if n_circles != 100:
-        print("wrong number of circles, something's wrong")
-
-
-    cam_circles = 15 # figure out a way to pass a value here from det2pos
-
-    tours = round(n_circles/cam_circles)
-    print("tours to make: ", tours)
-
-
-    # shape = (2, n_circles)
-    # circles = np.zeros(shape)
-
-    # print(circles)
-
-
-
 def next_circle(self, circle_pos = LocationLocal):
     pass
 
@@ -352,12 +317,9 @@ def main():
 
     time.sleep(2)
 
-
     coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
     coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
     coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
-
-    # create_orchard(coordrd, coordld, coordlu)
 
     drone.goto_global(coordrd)
     time.sleep(1)
@@ -382,26 +344,7 @@ def main():
 
     drone.local_circles(coord1, coord2, coord3)
 
-    
-
-    # coord3 = LocationLocal(north=41, east = -18, down = -alt)
-    # drone.goto_position_ned(coord3)
-
-
-    # drone.pos_change(36, 0, 0)
-
-    # time.sleep(3)
-    # print("left down pos: ", drone.vehicle.location.global_frame)
-
-    # coord4 = LocationLocal(north=41, east = 18, down = -alt)
-    # drone.goto_position_ned(coord4)
-
-    # drone.pos_change(0, 36, 0)
-
-    # time.sleep(3)
-    # print("left up pos: ", drone.vehicle.location.global_frame)
-
-    drone.vehicle.mode = "LAND"
+    drone.vehicle.mode = "RTL"
 
     print("End of script.")
 
