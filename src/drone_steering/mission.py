@@ -139,7 +139,6 @@ class DroneMission:
 
 
     def pos_change(self, north, east, down):
-
         while not self.vehicle.gps_0.fix_type:
             print("waiting for positional info")
             time.sleep(1)
@@ -214,43 +213,16 @@ class DroneMission:
         print("camera circles for attitude of ", round(-self.vehicle.location.local_frame.down), " metres is: ", cam_circles)
 
         # ekf origin czy home
-
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
         
 
-    # vectors for one side, in local system - let's say we fly through the points (given in global) and pass them into here:
-    def local_circles(self, l_coordrd, l_coordld, l_coordlu):
-        length = get_distance_metres_ned(l_coordrd, l_coordld)
-        width = get_distance_metres_ned(l_coordld, l_coordlu)
-
-        print("length local: ", length)
-        print("width local: ", width)
-
-        # if length > width:
-        #     self.condition_yaw(current_yaw, False)
-        # else:
-        #     self.condition_yaw(current_yaw+90, False)
-
-        n_length = (round(length/4))+1
-        print("number of circles from right to left: ", n_length)
-
-        n_width = (round(width/4))+1
-        print("number of circles from down to up: ", n_width)
-
-        n_circles = n_width*n_length
-
-        if n_circles != 100:
-            print("wrong number of circles, something's wrong")
-
-
+    def local_circles(self, length, width):
         cam_range_l = self.cam_range[0]-1 # one meter cut for better accuracy
         cam_range_w = self.cam_range[1]-1
 
         l_tours = round(length/cam_range_l)
         w_tours = round(width/cam_range_w)
 
-        current_yaw = self.vehicle.attitude.yaw
+        current_yaw = self.vehicle.attitude.yaw 
 
         delta = rotate_vector(cam_range_l, cam_range_w, current_yaw)
 
@@ -258,15 +230,86 @@ class DroneMission:
         
         k = 1
 
+        if length > width:
+            current_yaw = current_yaw + 90
+        
+
         for i in range(w_tours):
-            for j in range(l_tours):
+            for j in range(l_tours-1):
+                self.condition_yaw(current_yaw)
+                
                 self.pos_change(k*-delta[1,0], 0, 0)
+                time.sleep(4)
 
                 # taking a photo, detection and flying to the circles here
+            if i < w_tours-1:
+                self.condition_yaw(current_yaw)
+                time.sleep(4)
+                self.pos_change(0, -delta[0,0], 0)
+                k = -k
 
-            self.pos_change(0, -delta[0,0], 0)
+        # TODO do sprawdzenia czy kamera obejmuje wszystkie kółka, jeśli nie to dodać oblotów
+        # ogarnac jak dziala ten yaw, bo na razie to maniana jest
+
+    
+    def circles_map(self, n_length, n_width):
+        circles = []  
+
+        north = self.vehicle.location.local_frame.north
+        east = self.vehicle.location.local_frame.east
+        down = -4 # change the altitude for shooting here
+
+        yaw = self.vehicle.attitude.yaw 
+
+        dx = rotate_vector(0, -4, yaw)
+        dy = rotate_vector(-4, 0, yaw)
+
+        k = 1
+
+        circle = [north, east, down]
+        circles.append(circle)
+
+        for i in range(n_width):
+            for j in range(n_length-1):
+                north = north + k*dy[1]
+                east = east + k*dy[0]
+
+                circle = [north, east, down]
+                circles.append(circle)
+
+            if i < n_width-1:
+                north = north + dx[1]
+                east = east + dx[0]
+                circle = [north, east, down]
+                circles.append(circle)
+            
             k = -k
-        
+
+        for circle in circles:
+            print(*circle)
+
+        print("number of circles: ", len(circles))
+
+
+def circles_calc(l_coordrd, l_coordld, l_coordlu):
+    length = get_distance_metres_ned(l_coordrd, l_coordld)
+    width = get_distance_metres_ned(l_coordld, l_coordlu)
+
+    print("length local: ", length)
+    print("width local: ", width)
+
+    n_length = (round(length/4))+1
+    print("number of circles from right to left: ", n_length)
+
+    n_width = (round(width/4))+1
+    print("number of circles from down to up: ", n_width)
+
+    n_circles = n_width*n_length
+
+    if n_circles != 100:
+        print("wrong number of circles, something's wrong")
+
+    return length, width, n_length, n_width
 
 
 def rotate_vector(north, east, yaw):
@@ -285,14 +328,7 @@ def Rot(yaw):
         return res
 
 
-# spits out the distance between two given points in global frame
-def get_distance_metres(aLocation1, aLocation2):
-    dlat = aLocation2.lat - aLocation1.lat
-    dlong = aLocation2.lon - aLocation1.lon
-    return math.sqrt((dlat*dlat) + (dlong*dlong)) * 1.113195e5
-
-
-# using haversine formula, above doesn't work in australia
+# using haversine formula, dronekit's doesn't work in some cases
 def get_dist(aLocation1, aLocation2):
     coord1 = (aLocation1.lat, aLocation1.lon)
     coord2 = (aLocation2.lat, aLocation2.lon)
@@ -305,10 +341,6 @@ def get_distance_metres_ned(aLocation1, aLocation2):
     dnorth = aLocation2.north - aLocation1.north
     deast = aLocation2.east - aLocation1.east
     return math.sqrt((dnorth*dnorth) + (deast*deast))
-
-
-def next_circle(self, circle_pos = LocationLocal):
-    pass
 
 
 def main():
@@ -327,16 +359,9 @@ def main():
     time.sleep(1)
     coord1 = drone.vehicle.location.local_frame # rd
 
-    # # drone.pos_change(0,-16,0)
-    # # home = LocationLocal(north=5, east = -18, down = -alt)
-    # # drone.goto_position_ned(home)
-
     drone.goto_global(coordld)
     time.sleep(1)
     coord2 = drone.vehicle.location.local_frame #ld
-
-    # # time.sleep(3)
-    # # print("right down pos: ", drone.vehicle.location.global_frame)
 
     drone.goto_global(coordlu)
     time.sleep(1)
@@ -344,7 +369,11 @@ def main():
 
     drone.det2pos()
 
-    drone.local_circles(coord1, coord2, coord3)
+    map_dim = circles_calc(coord1, coord2, coord3)
+
+    drone.circles_map(map_dim[2], map_dim[3])
+
+    drone.local_circles(map_dim[0], map_dim[1])
 
     drone.vehicle.mode = "RTL"
 
