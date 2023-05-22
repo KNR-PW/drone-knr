@@ -49,6 +49,7 @@ class DetectorServer(Node):
                                                                 "camera",
                                                                 self.camera_callback,
                                                                 10)
+        self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
         self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
         self.br = CvBridge()
