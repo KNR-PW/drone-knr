@@ -156,7 +156,7 @@ class Ui_MainWindow(object):
         self.left_button.setSizePolicy(sizePolicy)
         self.left_button.setText("")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("../../../../../Downloads/left.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("/home/stas/Dron/drone-knr/src/drone_gui/icons/left.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.left_button.setIcon(icon)
         self.left_button.setIconSize(QtCore.QSize(20, 20))
         self.left_button.setObjectName("left_button")
@@ -169,7 +169,7 @@ class Ui_MainWindow(object):
         self.right_button.setSizePolicy(sizePolicy)
         self.right_button.setText("")
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap("../../../../../Downloads/right-arrow-svgrepo-com.svg"), QtGui.QIcon.Normal,
+        icon1.addPixmap(QtGui.QPixmap("/home/stas/Dron/drone-knr/src/drone_gui/icons/right-arrow-svgrepo-com.svg"), QtGui.QIcon.Normal,
                         QtGui.QIcon.Off)
         self.right_button.setIcon(icon1)
         self.right_button.setObjectName("right_button")
@@ -182,7 +182,7 @@ class Ui_MainWindow(object):
         self.back_button.setSizePolicy(sizePolicy)
         self.back_button.setText("")
         icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap("../../../../../Downloads/down.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon2.addPixmap(QtGui.QPixmap("/home/stas/Dron/drone-knr/src/drone_gui/icons/down.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.back_button.setIcon(icon2)
         self.back_button.setObjectName("back_button")
         self.gridLayout_2.addWidget(self.back_button, 3, 1, 1, 1)
@@ -194,7 +194,7 @@ class Ui_MainWindow(object):
         self.forward_button.setSizePolicy(sizePolicy)
         self.forward_button.setText("")
         icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap("../../../../../Downloads/up.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon3.addPixmap(QtGui.QPixmap("/home/stas/Dron/drone-knr/src/drone_gui/icons/up.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.forward_button.setIcon(icon3)
         self.forward_button.setObjectName("forward_button")
         self.gridLayout_2.addWidget(self.forward_button, 0, 1, 1, 1)
@@ -649,7 +649,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "KNR Drone"))
         self.label_4.setText(_translate("MainWindow", "KNR Drone control"))
         self.label_5.setText(_translate("MainWindow", "Go to position"))
         self.up_button.setText(_translate("MainWindow", " UP"))
