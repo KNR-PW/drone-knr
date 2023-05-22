@@ -49,7 +49,6 @@ class DetectorServer(Node):
                                                                 "camera",
                                                                 self.camera_callback,
                                                                 10)
-
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
         self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
         self.br = CvBridge()
@@ -151,7 +150,35 @@ class DetectorServer(Node):
 
         self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
 
+    def update_position(self):
+        self.get_logger().info('Sending GPS request')
+        request_gps = GetLocationRelative.Request()
+        gps_future = self.gps_cli.call_async(request_gps)
+        rclpy.spin_until_future_complete(self, gps_future, timeout_sec=0.5)
+        if gps_future.result() is not None:
+            self.north = gps_future.result().north
+            self.east = gps_future.result().east
+            self.down = gps_future.result().down
+            self.drone_amplitude = -self.down
+            self.get_logger().info('GPS Recieved')
+        else:
+            self.get_logger().info('GPS request failed')
+            self.drone_amplitude = 0
 
+    def det2pos(self, bounding_box):
+
+        HFOV=math.radians(62.2)
+        VFOV=math.radians(48.8)
+        x, y, w, h = bounding_box
+        detection = (x + w/2, y + h/2)
+
+        cam_range=(math.tan(HFOV)*self.drone_amplitude,math.tan(VFOV)*self.drone_amplitude)
+
+
+        target_pos_rel=np.multiply(np.divide(detection, self.img_size), cam_range)
+        print("position")
+        print(target_pos_rel)
+        return target_pos_rel
 def main(args=None):
     rclpy.init(args=args)
 
