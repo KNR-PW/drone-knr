@@ -44,6 +44,7 @@ class Ui_MainWindow(object):
 
         # value to handle stoping and playing video
         self.run_video = True
+        
 
     def ros_shutdown(self):
         self.node.destroy_node()
@@ -110,7 +111,6 @@ class Ui_MainWindow(object):
         print("image callback")
         frame = self.br.imgmsg_to_cv2(img)
         self.got_frame = True
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.frame = frame.astype(np.uint8)
 
     def convert_cv_qt(self, cv_img):
@@ -328,9 +328,6 @@ class Ui_MainWindow(object):
         # Set spinbox to slider value
         self.spinBox.setValue(value)
 
-        print("Slider 1 changed")
-        print(value)
-
     def slider_2_changed(self):
         # Lower GREEN
         value = self.horizontalSlider_2.value()
@@ -338,8 +335,6 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_2.setValue(value)
-        print("Slider 2 changed")
-        print(value)
 
     def slider_3_changed(self):
         #  Lower BLUE
@@ -348,8 +343,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_3.setValue(value)
-        print("Slider 3 changed")
-        print(value)
+
 
     def slider_4_changed(self):
         # Upper RED
@@ -358,8 +352,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_4.setValue(value)
-        print("Slider 4 changed")
-        print(value)
+
 
     def slider_5_changed(self):
         #  Upper GREEN
@@ -368,8 +361,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_5.setValue(value)
-        print("Slider 5 changed")
-        print(value)
+
 
     def slider_6_changed(self):
         #  Upper BLUE
@@ -378,8 +370,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_6.setValue(value)
-        print("Slider 6 changed")
-        print(value)
+
 
     def radio_button_update(self):
         if self.radioButton.isChecked():
