@@ -262,9 +262,11 @@ class DroneMission:
             for j in range(l_tours):
                 self.pos_change(k*-delta[1,0], 0, 0)
 
-                # 
+                # taking a photo, detection and flying to the circles here
+
             self.pos_change(0, -delta[0,0], 0)
             k = -k
+        
 
 
 def rotate_vector(north, east, yaw):
