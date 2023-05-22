@@ -38,12 +38,16 @@ class Detection:
 
 
 class DetectorServer(Node):
-
+# Simulation version of server. It takes frames from topic not from hardware camera
     def __init__(self):
         super().__init__('detector_server')
         self.thresholds_subscription = self.create_subscription(Int32MultiArray,
                                                                 "detector_thresholds",
                                                                 self.thresholds_callback,
+                                                                10)
+        self.camera_subscription = self.create_subscription(Image,
+                                                                "camera",
+                                                                self.camera_callback,
                                                                 10)
 
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
@@ -53,38 +57,47 @@ class DetectorServer(Node):
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
-        self.img_size = (640, 480)
+        self.img_size = (1920, 1080)
         self.series_counter = 0
-        self.photos_path = "/home/stas/Dron/drone_photos/"
-        # self.detection_msg = Detection()
+        self.photos_path = "/home/stas/Dron/simulation_photos/"
         self.detections_list_msg = DetectionsList()
-
+        self.frame = None
         self.get_logger().info('DetectorServer node created')
-        self.video_capture = cv2.VideoCapture(0)
-        while (self.video_capture.isOpened() == False):
-            self.get_logger().info('Waiting for camera video cpture to open...')
-        _, self.frame = self.video_capture.read()
+        # self.video_capture = cv2.VideoCapture(0)
+        # while (self.video_capture.isOpened() == False):
+        #     self.get_logger().info('Waiting for camera video cpture to open...')
+        # _, self.frame = self.video_capture.read()
+
+    def camera_callback(self, img):
+        self.get_logger().info("Recieving frame")
+        frame = self.br.imgmsg_to_cv2(img)
+        frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_LINEAR)
+        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        self.frame = frame
 
     def take_photo_callback(self, request, response):
+
         photos_number = request.photos_number
+        succes = True
         print(os.path.abspath(__file__))
         for i in range(photos_number):
-            ret, frame = self.video_capture.read()
-            if ret == 0:
+            if self.frame is None:
                 self.get_logger().info('Taking photo failed')
+                succes = False
                 break
             else:
                 print(self.photos_path + "drone_photo" + str(self.series_counter) + str(i) + '.jpg')
                 cv2.imwrite(self.photos_path + "drone_photo" + str(self.series_counter) + str(i) + '.jpg', frame)
 
         self.series_counter += 1
-        self.get_logger().info(f'Taking  {photos_number} photos succeeded')
+        if succes:
+            self.get_logger().info(f'Taking  {photos_number} photos succeeded')
 
         return response
 
     def detect_trees_callback(self, request, response):
         self.get_logger().info('Incoming detection request')
-        self.read_frame()  # TODO
+        # self.read_frame()
         self.detection(self.frame)
         self.detections_to_msg()
         response.detections_list = self.detections_list_msg
