@@ -95,6 +95,7 @@ class DetectorServer(Node):
     def detect_trees_callback(self, request, response):
         self.get_logger().info('Incoming detection request')
         self.read_frame()
+        self.update_position()
         self.detection(self.frame)
         self.detections_to_msg()
         response.detections_list = self.detections_list_msg
@@ -124,7 +125,6 @@ class DetectorServer(Node):
                 area = cv2.contourArea(cnt)
                 if area > 200:
                     x, y, w, h = cv2.boundingRect(cnt)
-                    self.update_position()
                     pos = self.det2pos((x, y, w, h))
                     self.get_logger().info(f"Detection pos: {pos}")
                     print(pos)
