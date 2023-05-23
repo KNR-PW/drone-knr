@@ -9,8 +9,8 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.srv import GetAttitude, GetLocationRelative
-from drone_interfaces.action import GotoRelative, GotoGlobal
+from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw, SetMode
+from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff
 
 class DroneHandler(Node):
     def __init__(self):
@@ -19,10 +19,15 @@ class DroneHandler(Node):
         ## DECLARE SERVICES
         self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
         self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
+        self.servo = self.create_service(SetServo, 'set_servo', self.set_servo_callback)
+        self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
+        self.mode = self.create_service(SetMode, 'set_mode',self.set_mode_callback)
         
         ## DECLARE ACTIONS
         self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
         self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
+        self.arm = ActionServer(self,Arm, 'Arm',self.arm_callback)
+        self.takeoff = ActionServer(self, Takeoff, 'takeoff',self.takeoff_callback)
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
@@ -51,37 +56,6 @@ class DroneHandler(Node):
         self.vehicle.mode=VehicleMode("RTL")
 
     ## INTERNAL HELPER METHODS
-    def arm(self):
-        self.state = "BUSY"
-        self.vehicle.mode=VehicleMode("GUIDED")
-        while self.vehicle.is_armable==False:
-            self.get_logger().info("Waiting for vehicle to become armable...")
-            time.sleep(5)
-        self.get_logger().info("Vehicle is now armable")
-
-        self.vehicle.armed=True
-        while self.vehicle.armed==False:
-            self.get_logger().info("Waiting for drone to become armed...")
-            time.sleep(1)
-
-        self.get_logger().info("Vehicle is now armed.")
-        self.get_logger().info("props are spinning!")
-        self.state = "OK"
-    
-    def takeoff(self, altitude):
-        self.state = "OK"
-        self.vehicle.simple_takeoff(altitude)
-
-        # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
-        #  after Vehicle.simple_takeoff will execute immediately).
-        while True:
-            self.get_logger().info(f"Altitude: {self.vehicle.location.global_relative_frame.alt}")
-            if self.vehicle.location.global_relative_frame.alt >= altitude * 0.97:  # Trigger just below target alt.
-                self.get_logger().info("Reached target altitude")
-                break
-            time.sleep(1)
-        self.state = "OK"
-
     def goto_position_target_local_ned(self, north, east, down=-1):
         if down == -1:
             down = self.vehicle.location.local_frame.down
@@ -115,6 +89,42 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
+    def set_yaw(self, yaw, relative=False):
+        if yaw<0:
+            yaw+=6.283185
+        yaw = yaw / 3.141592 * 180
+        if abs(self.vehicle.attitude.yaw - yaw) > 3.141592:
+            dir = 1 if self.vehicle.attitude.yaw < yaw else -1
+        else:
+            dir = 1 if self.vehicle.attitude.yaw > yaw else -1
+        if relative:
+            is_relative=1 #yaw relative to direction of travel
+        else:
+            is_relative=0 #yaw is an absolute angle
+        # create the CONDITION_YAW command using command_long_encode()
+        msg = self.vehicle.message_factory.command_long_encode(
+            0, 0,        # target system, target component
+            mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
+            0,           #confirmation
+            yaw,         # param 1, yaw in degrees
+            0,           # param 2, yaw speed deg/s
+            1,           # param 3, direction -1 ccw, 1 cw
+            is_relative, # param 4, relative offset 1, absolute angle 0
+            0, 0, 0)     # param 5 ~ 7 not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+
+    def set_servo(self, servo_id, pwm):
+        msg = self.vehicle.message_factory.command_long_encode(
+            0,          # time_boot_ms (not used)
+            0, 0,       # target system, target component
+            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
+            0,          #not used
+            servo_id,   #number of servo instance
+            pwm,        #pwm value for servo control
+            0,0,0,0,0,) #not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
 
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.vehicle.location.local_frame.north
@@ -150,8 +160,22 @@ class DroneHandler(Node):
         self.get_logger().info(f"East: {response.east}")
         self.get_logger().info(f"Down: {response.down}")
         return response
-
     
+    def set_yaw_callback(self, request, response):
+        self.set_yaw(request.yaw)
+        response = SetYaw.Response()
+        return response
+
+    def set_servo_callback(self, request, response):
+        self.set_servo(request.servo_id, request.pwm)
+        response = SetServo.Response()
+        return response
+    
+    def set_mode_callback(self, request, response):
+        self.vehicle.mode = VehicleMode(request.mode)
+        response = SetMode.Response()
+        return response
+
     ## ACTION CALLBACKS
     def goto_relative_action(self, goal_handle):
         self.get_logger().info(f'-- Goto relative action registered. Destination in local frame: --')
@@ -213,6 +237,56 @@ class DroneHandler(Node):
         goal_handle.succeed()
         self.state = "OK"
         result = GotoGlobal.Result()
+        result.result = 1
+
+        return result
+    
+    def arm_callback(self, goal_handle):
+        self.get_logger().info(f'-- Arm action registered --')
+        self.state = "BUSY"
+        feedback_msg = Arm.Feedback()
+        
+        while self.vehicle.is_armable==False:
+            feedback_msg.feedback = "Waiting for vehicle to become armable..."
+            self.get_logger().info(feedback_msg.feedback)
+            time.sleep(1)
+
+        self.vehicle.armed=True
+        while self.vehicle.armed==False:
+            feedback_msg.feedback = "Waiting for drone to become armed..."
+            self.get_logger().info(feedback_msg.feedback)
+            time.sleep(1)
+
+        feedback_msg.feedback = "Vehicle is now armed."
+        self.get_logger().info(feedback_msg.feedback)
+
+        self.state = "OK"
+        
+        goal_handle.succeed()
+        self.state = "OK"
+        result = Arm.Result()
+        result.result = 1
+
+        return result
+    
+    def takeoff_callback(self, goal_handle):
+        feedback_msg = Takeoff.Feedback()
+
+        self.state = "OK"
+        self.vehicle.simple_takeoff(goal_handle.request.altitude)
+
+        # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
+        #  after Vehicle.simple_takeoff will execute immediately).
+        while self.vehicle.location.global_relative_frame.alt >= goal_handle.request.altitude * 0.97:
+            feedback_msg.altitude = self.vehicle.location.global_relative_frame.alt
+            self.get_logger().info(f"Altitude: {feedback_msg.altitude}")
+            time.sleep(1)
+
+        self.get_logger().info("Reached target altitude")
+        
+        goal_handle.succeed()
+        self.state = "OK"
+        result = Takeoff.Result()
         result.result = 1
 
         return result
