@@ -9,20 +9,12 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw, SetMode
 from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff
 
 class DroneHandler(Node):
     def __init__(self):
         super().__init__('drone_handler')
 
-        ## DECLARE SERVICES
-        self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
-        self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
-        self.servo = self.create_service(SetServo, 'set_servo', self.set_servo_callback)
-        self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
-        self.mode = self.create_service(SetMode, 'set_mode',self.set_mode_callback)
-        
         ## DECLARE ACTIONS
         self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
         self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
@@ -138,44 +130,7 @@ class DroneHandler(Node):
         ddown = location.down - self.vehicle.location.global_relative_frame.down
         return math.sqrt(dlat*dlat + dlon*dlon + ddown*ddown)
 
-    ## SERVICE CALLBACKS
-    def get_attitude_callback(self, request, response):
-        temp = self.vehicle.attitude
-        response.roll=temp.roll
-        response.pitch=temp.pitch
-        response.yaw=temp.yaw
-        self.get_logger().info(f"-- Get attitude service called --")
-        self.get_logger().info(f"Roll: {response.roll}")
-        self.get_logger().info(f"Pitch: {response.pitch}")
-        self.get_logger().info(f"Yaw: {response.yaw}")
-        return response
-    
-    def get_location_relative_callback(self, request, response):
-        temp = self.vehicle.location.local_frame
-        response.north = temp.north
-        response.east = temp.east
-        response.down = temp.down
-        self.get_logger().info(f"-- Get location relative service called --")
-        self.get_logger().info(f"North: {response.north}")
-        self.get_logger().info(f"East: {response.east}")
-        self.get_logger().info(f"Down: {response.down}")
-        return response
-    
-    def set_yaw_callback(self, request, response):
-        self.set_yaw(request.yaw)
-        response = SetYaw.Response()
-        return response
-
-    def set_servo_callback(self, request, response):
-        self.set_servo(request.servo_id, request.pwm)
-        response = SetServo.Response()
-        return response
-    
-    def set_mode_callback(self, request, response):
-        self.vehicle.mode = VehicleMode(request.mode)
-        response = SetMode.Response()
-        return response
-
+   
     ## ACTION CALLBACKS
     def goto_relative_action(self, goal_handle):
         self.get_logger().info(f'-- Goto relative action registered. Destination in local frame: --')

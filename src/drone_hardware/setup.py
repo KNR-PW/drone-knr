@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "drone_handler=drone_hardware.drone_handler:main"
+            "drone_pilot=drone_hardware.drone_pilot:main",
+            "drone_state_controller = drone_hardware.drone_state_controller:main"
         ],
     },
 )
