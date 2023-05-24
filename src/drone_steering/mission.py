@@ -94,7 +94,7 @@ class DroneMission:
         self.vehicle.send_mavlink(msg)
 
 
-    def goto_position_target_global_int(self, aLocation):
+    def goto_position_global(self, aLocation):
         msg = self.vehicle.message_factory.set_position_target_global_int_encode(
             0,       # time_boot_ms (not used)
             0, 0,    # target system, target component
@@ -111,34 +111,36 @@ class DroneMission:
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-
-    # above, but improved with ability to finish before next function starts
-    def goto_global(self, aLocation):
-        self.goto_position_target_global_int(aLocation)
-
         while self.vehicle.mode == "GUIDED":
-            remaining_distance = get_dist(self.vehicle.location.global_frame, aLocation)
+            remaining_distance = get_distance_global(self.vehicle.location.global_frame, aLocation)
             if remaining_distance <= 0.25:
                 print("Reached target waypoint")
                 break
             time.sleep(1)
 
 
-    def goto_position_target_local_ned(self, north, east, down):
+    def goto_position_local_ned(self, coord = LocationLocal):
         msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
             0,       # time_boot_ms (not used)
             0, 0,    # target system, target component
             mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
             0b0000111111111000, # type_mask (only positions enabled)
-            north, east, down, # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
+            coord.north, coord.east, coord.down, # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
             0, 0, 0, # x, y, z velocity in m/s  (not used)
             0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
             0, 0)    # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
+        while self.vehicle.mode == "GUIDED":
+            remaining_distance = get_distance_metres_ned(self.vehicle.location.local_frame, coord)
+            if remaining_distance <= 0.25:
+                print("Reached target waypoint")
+                break
+            time.sleep(1)
 
-    def pos_change(self, north, east, down):
+
+    def goto_position_rel(self, north, east, down):
         while not self.vehicle.gps_0.fix_type:
             print("waiting for positional info")
             time.sleep(1)
@@ -152,7 +154,7 @@ class DroneMission:
         next_location.east = current_location.east + east
         next_location.down = current_location.down + down
 
-        self.goto_position_target_local_ned(next_location.north, next_location.east, next_location.down)
+        self.goto_position_local_ned(next_location)
 
         while self.vehicle.mode == "GUIDED":
             remaining_distance = get_distance_metres_ned(self.vehicle.location.local_frame, next_location)
@@ -166,17 +168,6 @@ class DroneMission:
 
         # Print the position
         print('Current position (local frame): {}'.format(current_location))
-
-
-    def goto_position_ned(self, coord = LocationLocal):
-        self.goto_position_target_local_ned(coord.north, coord.east, coord.down)
-
-        while self.vehicle.mode == "GUIDED":
-            remaining_distance = get_distance_metres_ned(self.vehicle.location.local_frame, coord)
-            if remaining_distance <= 0.25:
-                print("Reached target waypoint")
-                break
-            time.sleep(1)
 
 
     def det2pos(self):
@@ -215,7 +206,7 @@ class DroneMission:
         # ekf origin czy home
         
 
-    def local_circles(self, length, width):
+    def photos_tour(self, length, width):
         cam_range_l = self.cam_range[0]-1 # one meter cut for better accuracy
         cam_range_w = self.cam_range[1]-1
 
@@ -226,7 +217,7 @@ class DroneMission:
 
         delta = rotate_vector(cam_range_l, cam_range_w, current_yaw)
 
-        self.pos_change(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
+        self.goto_position_rel(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
         
         k = 1
 
@@ -238,14 +229,14 @@ class DroneMission:
             for j in range(l_tours-1):
                 self.condition_yaw(current_yaw)
                 
-                self.pos_change(k*-delta[1,0], 0, 0)
+                self.goto_position_rel(k*-delta[1,0], 0, 0)
                 time.sleep(4)
 
                 # taking a photo, detection and flying to the circles here
             if i < w_tours-1:
                 self.condition_yaw(current_yaw)
                 time.sleep(4)
-                self.pos_change(0, -delta[0,0], 0)
+                self.goto_position_rel(0, -delta[0,0], 0)
                 k = -k
 
         # TODO do sprawdzenia czy kamera obejmuje wszystkie kółka, jeśli nie to dodać oblotów
@@ -329,7 +320,7 @@ def Rot(yaw):
 
 
 # using haversine formula, dronekit's doesn't work in some cases
-def get_dist(aLocation1, aLocation2):
+def get_distance_global(aLocation1, aLocation2):
     coord1 = (aLocation1.lat, aLocation1.lon)
     coord2 = (aLocation2.lat, aLocation2.lon)
 
@@ -355,15 +346,15 @@ def main():
     coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
     coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
 
-    drone.goto_global(coordrd)
+    drone.goto_position_global(coordrd)
     time.sleep(1)
     coord1 = drone.vehicle.location.local_frame # rd
 
-    drone.goto_global(coordld)
+    drone.goto_position_global(coordld)
     time.sleep(1)
     coord2 = drone.vehicle.location.local_frame #ld
 
-    drone.goto_global(coordlu)
+    drone.goto_position_global(coordlu)
     time.sleep(1)
     coord3 = drone.vehicle.location.local_frame # lu
 
@@ -373,7 +364,7 @@ def main():
 
     drone.circles_map(map_dim[2], map_dim[3])
 
-    drone.local_circles(map_dim[0], map_dim[1])
+    drone.photos_tour(map_dim[0], map_dim[1])
 
     drone.vehicle.mode = "RTL"
 
