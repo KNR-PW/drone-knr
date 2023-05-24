@@ -628,8 +628,8 @@ class Ui_MainWindow(object):
         north = self.north_lineEdit.text() or "0"
         east = self.east_lineEdit.text() or "0"
         down = self.down_lineEdit.text() or "0"
-
-        if not north.lstrip('-').isdigit() or not east.lstrip('-').isdigit() or not down.lstrip('-').isdigit():
+        print(north.lstrip('-').replace(".", ""))
+        if not north.lstrip('-').replace(".", "").isdigit() or not east.lstrip('-').replace(".", "").isdigit() or not down.lstrip('-').replace(".", "").isdigit():
             self.error_popup()
         else:
             self.ros_send_goto_relative(float(north), float(east), float(down))

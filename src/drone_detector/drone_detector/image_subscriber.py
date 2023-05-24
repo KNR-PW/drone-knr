@@ -22,13 +22,13 @@ class ImageSubscriber(Node):
         Class constructor to set up the node
         """
         # Initiate the Node class's constructor and give it a name
-        super().__init__('image_subscriber')
+        super().__init__('camera')
 
         # Create the subscriber. This subscriber will receive an Image
         # from the video_frames topic. The queue size is 10 messages.
         self.subscription = self.create_subscription(
             Image,
-            'video_frames',
+            'camera',
             self.listener_callback,
             10)
         # Used to convert between ROS and OpenCV images
@@ -46,6 +46,8 @@ class ImageSubscriber(Node):
         # Convert ROS Image message to OpenCV image
         current_frame = self.br.imgmsg_to_cv2(data)
 
+        # convert frame in simulation
+        current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2RGB)
         # Display image
         cv2.imshow("camera", current_frame)
 
