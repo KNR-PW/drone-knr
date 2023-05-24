@@ -194,28 +194,20 @@ class DroneMission:
 
         print(self.cam_range)
 
-        cam_n_l = (int(self.cam_range[0]/4))+1 # camera number of circles, length
-        print("longer side camera circles: ", cam_n_l)
-
-        cam_n_w = (int(self.cam_range[1]/4))+1 # camera number of circles, width
-        print("shorter side camera circles: ", cam_n_w)
-
-        cam_circles = cam_n_l*cam_n_w
-        print("camera circles for attitude of ", round(-self.vehicle.location.local_frame.down), " metres is: ", cam_circles)
-
         # ekf origin czy home
         
 
     def photos_tour(self, length, width):
-        cam_range_l = self.cam_range[0]-1 # one meter cut for better accuracy
-        cam_range_w = self.cam_range[1]-1
+        # CHOOSE HOW MUCH TO OVERLAP PHOTOS HERE
+        cam_range_l = self.cam_range[0]-2 # two meters cut for better accuracy and overlapping
+        cam_range_w = self.cam_range[1]-2
 
         l_tours = round(length/cam_range_l)
         w_tours = round(width/cam_range_w)
 
         current_yaw = self.vehicle.attitude.yaw 
 
-        delta = rotate_vector(cam_range_l, cam_range_w, current_yaw)
+        delta = rotate_vector(cam_range_l, cam_range_w, current_yaw) #delta is camera's range's vector, it's then rotated to match the field
 
         self.goto_position_rel(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
         
@@ -223,7 +215,6 @@ class DroneMission:
 
         if length > width:
             current_yaw = current_yaw + 90
-        
 
         for i in range(w_tours):
             for j in range(l_tours-1):
@@ -243,43 +234,44 @@ class DroneMission:
         # ogarnac jak dziala ten yaw, bo na razie to maniana jest
 
     
-    def circles_map(self, n_length, n_width):
-        circles = []  
+    # # we don't do that here
+    # def circles_map(self, n_length, n_width):
+    #     circles = []  
 
-        north = self.vehicle.location.local_frame.north
-        east = self.vehicle.location.local_frame.east
-        down = -4 # change the altitude for shooting here
+    #     north = self.vehicle.location.local_frame.north
+    #     east = self.vehicle.location.local_frame.east
+    #     down = -4 # change the altitude for shooting here
 
-        yaw = self.vehicle.attitude.yaw 
+    #     yaw = self.vehicle.attitude.yaw 
 
-        dx = rotate_vector(0, -4, yaw)
-        dy = rotate_vector(-4, 0, yaw)
+    #     dx = rotate_vector(0, -4, yaw)
+    #     dy = rotate_vector(-4, 0, yaw)
 
-        k = 1
+    #     k = 1
 
-        circle = [north, east, down]
-        circles.append(circle)
+    #     circle = [north, east, down]
+    #     circles.append(circle)
 
-        for i in range(n_width):
-            for j in range(n_length-1):
-                north = north + k*dy[1]
-                east = east + k*dy[0]
+    #     for i in range(n_width):
+    #         for j in range(n_length-1):
+    #             north = north + k*dy[1]
+    #             east = east + k*dy[0]
 
-                circle = [north, east, down]
-                circles.append(circle)
+    #             circle = [north, east, down]
+    #             circles.append(circle)
 
-            if i < n_width-1:
-                north = north + dx[1]
-                east = east + dx[0]
-                circle = [north, east, down]
-                circles.append(circle)
+    #         if i < n_width-1:
+    #             north = north + dx[1]
+    #             east = east + dx[0]
+    #             circle = [north, east, down]
+    #             circles.append(circle)
             
-            k = -k
+    #         k = -k
 
-        for circle in circles:
-            print(*circle)
+    #     for circle in circles:
+    #         print(*circle)
 
-        print("number of circles: ", len(circles))
+    #     print("number of circles: ", len(circles))
 
 
 def circles_calc(l_coordrd, l_coordld, l_coordlu):
@@ -362,9 +354,11 @@ def main():
 
     map_dim = circles_calc(coord1, coord2, coord3)
 
-    drone.circles_map(map_dim[2], map_dim[3])
+    # drone.circles_map(map_dim[2], map_dim[3])
 
-    drone.photos_tour(map_dim[0], map_dim[1])
+    print(drone.vehicle.attitude.yaw)
+
+    # drone.photos_tour(map_dim[0], map_dim[1])
 
     drone.vehicle.mode = "RTL"
 
