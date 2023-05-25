@@ -73,25 +73,44 @@ class DroneMission:
             time.sleep(1)
 
         return None
-    
 
-    def condition_yaw(self, heading, relative=False): # set relative to true if you want to set it relatively to current yaw
-        if relative:
-            is_relative = 1 #yaw relative to direction of travel
+
+    # can't get it to work reliably
+    def set_yaw(self, yaw, relative=False):
+        if yaw<0:
+            yaw+=6.283185
+        # yaw = yaw / 3.141592 * 180 # isn't yaw in radians right now?
+
+        if abs(self.vehicle.attitude.yaw - yaw) > 3.141592:
+            dir = 1 if self.vehicle.attitude.yaw > yaw else -1 # fixed sign
         else:
-            is_relative = 0 #yaw is an absolute angle
+            dir = 1 if self.vehicle.attitude.yaw < yaw else -1 # fixed sign
+
+        # yaw = yaw / math.pi * 180
+
+        
+        if relative:
+            is_relative=1 #yaw relative to direction of travel
+        else:
+            is_relative=0 #yaw is an absolute angle
         # create the CONDITION_YAW command using command_long_encode()
         msg = self.vehicle.message_factory.command_long_encode(
-            0, 0,    # target system, target component
+            0, 0,        # target system, target component
             mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
-            0, #confirmation
-            heading,    # param 1, yaw in degrees
-            0,          # param 2, yaw speed deg/s
-            1,          # param 3, direction -1 ccw, 1 cw
+            0,           #confirmation
+            yaw,         # param 1, yaw in degrees
+            0,           # param 2, yaw speed deg/s
+            dir,           # param 3, direction -1 ccw, 1 cw
             is_relative, # param 4, relative offset 1, absolute angle 0
-            0, 0, 0)    # param 5 ~ 7 not used
+            0, 0, 0)     # param 5 ~ 7 not used
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
+
+
+        # while abs(yaw - self.vehicle.attitude.yaw) >= 2:
+        #     time.sleep(1)
+        #     print("bruh")
+            
 
 
     def goto_position_global(self, aLocation):
@@ -214,18 +233,18 @@ class DroneMission:
         k = 1
 
         if length > width:
-            current_yaw = current_yaw + 90
+            current_yaw = current_yaw + 3.141592/2
 
         for i in range(w_tours):
             for j in range(l_tours-1):
-                self.condition_yaw(current_yaw)
-                
-                self.goto_position_rel(k*-delta[1,0], 0, 0)
+                self.set_yaw(current_yaw)
                 time.sleep(4)
-
+                self.goto_position_rel(k*-delta[1,0], 0, 0)
+                
                 # taking a photo, detection and flying to the circles here
+
             if i < w_tours-1:
-                self.condition_yaw(current_yaw)
+                self.set_yaw(current_yaw)
                 time.sleep(4)
                 self.goto_position_rel(0, -delta[0,0], 0)
                 k = -k
@@ -358,7 +377,7 @@ def main():
 
     print(drone.vehicle.attitude.yaw)
 
-    # drone.photos_tour(map_dim[0], map_dim[1])
+    drone.photos_tour(map_dim[0], map_dim[1])
 
     drone.vehicle.mode = "RTL"
 
