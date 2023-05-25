@@ -293,9 +293,16 @@ class DroneMission:
     #     print("number of circles: ", len(circles))
 
 
-def circles_calc(l_coordrd, l_coordld, l_coordlu):
-    length = get_distance_metres_ned(l_coordrd, l_coordld)
-    width = get_distance_metres_ned(l_coordld, l_coordlu)
+def circles_calc(l_coordru, l_coordrd, l_coordld, l_coordlu):
+
+    length_d = get_distance_metres_ned(l_coordrd, l_coordld) # down and up
+    length_u = get_distance_metres_ned(l_coordru, l_coordlu)
+    
+    width_r = get_distance_metres_ned(l_coordrd, l_coordru) #right
+    width_l = get_distance_metres_ned(l_coordld, l_coordlu) #left
+
+    length = (length_d+length_u)/2
+    width = (width_r+width_l)/2
 
     print("length local: ", length)
     print("width local: ", width)
@@ -353,9 +360,14 @@ def main():
 
     time.sleep(2)
 
+    coordru = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
     coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
     coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
     coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
+    
+    drone.goto_position_global(coordru)
+    time.sleep(1)
+    coord0 = drone.vehicle.location.local_frame # rd
 
     drone.goto_position_global(coordrd)
     time.sleep(1)
@@ -371,7 +383,7 @@ def main():
 
     drone.det2pos()
 
-    map_dim = circles_calc(coord1, coord2, coord3)
+    map_dim = circles_calc(coord0, coord1, coord2, coord3)
 
     # drone.circles_map(map_dim[2], map_dim[3])
 
@@ -383,19 +395,10 @@ def main():
 
     print("End of script.")
 
-    # 1 wszy algorytm to lista punktów
-    # przeliczenie tmmem, przeliczenie tak na local frame
 
+    # chore punkty i zestrzelenie - det2pos + detekcja
 
-    # 2gi algorytm to środki zdjęć jakoś
-
-    # 1wszy algorytm to tworzenie listy zdjec
-    # i to obliczamy przy obrocie o dany kąt tak żeby minimalizować pole tego szukanego tego
-    # z wektora
-
-    # 3 algorytm to chore punkty i zestrzelenie
-
-    # wypierdalac te powielone tym dystansem, albo średnią z dwóch punktów
+    # powielone tym dystansem wywalic, albo średnią z dwóch punktów
 
     # po zrobieniu zdjec puszczmay serwis do detektora on robi zdjecie i zwraca kolejną kolejkę z tymi do zestrzelenia
 
