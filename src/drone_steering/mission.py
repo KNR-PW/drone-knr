@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 from dronekit import connect, VehicleMode, LocationGlobal, LocationLocal, LocationGlobalRelative, APIException
 import time
@@ -8,7 +7,6 @@ import math
 import argparse
 from pymavlink import mavutil # Needed for command message definitions
 import haversine as hv # because the dronekit one doesn't work near Poles hehe xD
-import cv2
 
 class DroneMission:
     def __init__(self):
@@ -401,7 +399,6 @@ def main():
     # powielone tym dystansem wywalic, albo średnią z dwóch punktów
 
     # po zrobieniu zdjec puszczmay serwis do detektora on robi zdjecie i zwraca kolejną kolejkę z tymi do zestrzelenia
-
 
 
 if __name__ == "__main__":
