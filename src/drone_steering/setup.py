@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'drone_navigator = drone_steering.drone_navigator:main'
+            'drone_navigator = drone_steering.drone_navigator:main',
+            'drone_client = drone_steering.drone_client:main',
         ],
     },
 )
