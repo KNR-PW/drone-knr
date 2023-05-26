@@ -39,63 +39,75 @@ class Detection:
 
 
 class DetectorServer(Node):
-
+# Simulation version of server. It takes frames from topic not from hardware camera
     def __init__(self):
         super().__init__('detector_server')
         self.thresholds_subscription = self.create_subscription(Int32MultiArray,
                                                                 "detector_thresholds",
                                                                 self.thresholds_callback,
                                                                 10)
-
+        self.camera_subscription = self.create_subscription(Image,
+                                                                "camera",
+                                                                self.camera_callback,
+                                                                10)
+        self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
+        while not self.gps_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('gps service not available, waiting again...')
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
         self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
-        self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
-        self.frames_pub = self.create_publisher(Image, "/camera", 10)
-        # self.timer = self.create_timer(0.1, self.timer_callback)
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
-        self.img_size = (1920, 1080)
+        self.img_size = (640, 480)
         self.series_counter = 0
-        self.photos_path = "/home/raspberrypi/Drone/drone_photos/"
-        # self.detection_msg = Detection()
+        self.photos_path = "/home/stas/Dron/simulation_photos/"
         self.detections_list_msg = DetectionsList()
-
+        self.frame = None
+        self.yaw = 0
+        self.drone_amplitude = 0
         self.get_logger().info('DetectorServer node created')
-        self.video_capture = cv2.VideoCapture(0)
-        while (self.video_capture.isOpened() == False):
-            self.get_logger().info('Waiting for camera video cpture to open...')
-        _, self.frame = self.video_capture.read()
+        # self.video_capture = cv2.VideoCapture(0)
+        # while (self.video_capture.isOpened() == False):
+        #     self.get_logger().info('Waiting for camera video cpture to open...')
+        # _, self.frame = self.video_capture.read()
 
-    def timer_callback(self):
-        ret, frame = self.video_capture.read()
-        if ret:
-            frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_LINEAR)
+    def camera_callback(self, img):
+        # self.get_logger().info("Recieving frame")
+        frame = self.br.imgmsg_to_cv2(img)
+        frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_LINEAR)
+        # convert frame in simulation
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        self.frame = frame
 
-            self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
     def take_photo_callback(self, request, response):
+
         photos_number = request.photos_number
+        succes = True
         print(os.path.abspath(__file__))
         for i in range(photos_number):
-            ret, frame = self.video_capture.read()
-            if ret == 0:
+            if self.frame is None:
                 self.get_logger().info('Taking photo failed')
+                succes = False
                 break
             else:
                 print(self.photos_path + "drone_photo" + str(self.series_counter) + str(i) + '.jpg')
                 cv2.imwrite(self.photos_path + "drone_photo" + str(self.series_counter) + str(i) + '.jpg', frame)
 
         self.series_counter += 1
-        self.get_logger().info(f'Taking  {photos_number} photos succeeded')
+        if succes:
+            self.get_logger().info(f'Taking  {photos_number} photos succeeded')
 
         return response
 
     def detect_trees_callback(self, request, response):
         self.get_logger().info('Incoming detection request')
-        self.read_frame()
-        self.update_position()
+        self.drone_amplitude= -request.gps[2]
+        self.yaw = request.yaw
+        # self.read_frame()
+        # self.update_position()
+ 
         self.detection(self.frame)
         self.detections_to_msg()
         response.detections_list = self.detections_list_msg
@@ -104,6 +116,7 @@ class DetectorServer(Node):
         return response
 
     def thresholds_callback(self, msg):
+        self.get_logger().info('Recieved treshold update')   
         thres_array = msg.data
         col_arr = ["brown", "beige", "golden"]
         col = col_arr[thres_array[0] - 1]
@@ -112,7 +125,7 @@ class DetectorServer(Node):
         print(self.thresholds)
 
     def detection(self, frame):
-        self.get_logger().info('Detecting...')
+        # self.get_logger().info('Receiving video frame and detecting')
         self.detections.clear()
 
         # Detection
@@ -127,11 +140,9 @@ class DetectorServer(Node):
                     x, y, w, h = cv2.boundingRect(cnt)
                     pos = self.det2pos((x, y, w, h))
                     self.get_logger().info(f"Detection pos: {pos}")
-                    print(pos)
-                    self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
+                    self.detections.append(Detection(bounding_box=(x, y, w, h), color=col, gps_pos=pos))
 
     def read_frame(self):
-        self.get_logger().info('Reading frame')
         ret, frame = self.video_capture.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
@@ -153,16 +164,15 @@ class DetectorServer(Node):
 
         self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
 
-    def Rot(self, yaw):
-        yaw = math.radians(yaw)
-        res = np.matrix([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
-        return res
-
     def update_position(self):
+        self.gps_ready = 0
         self.get_logger().info('Sending GPS request')
         request_gps = GetLocationRelative.Request()
-        gps_future = self.gps_cli.call_async(request_gps)
-        rclpy.spin_until_future_complete(self, gps_future, timeout_sec=0.5)
+        # gps_future = self.gps_cli.call_async(request_gps)
+        # gps_future.add_done_callback(self.gps_get_result)
+        # rclpy.spin_until_future_complete(self, gps_future, timeout_sec=5)
+
+    def gps_get_result(self, gps_future):
         if gps_future.result() is not None:
             self.north = gps_future.result().north
             self.east = gps_future.result().east
@@ -172,21 +182,43 @@ class DetectorServer(Node):
         else:
             self.get_logger().info('GPS request failed')
             self.drone_amplitude = 0
-
+        self.gps_ready = 1
+        
     def det2pos(self, bounding_box):
 
+        print("heighth")
+        print(self.drone_amplitude)
         HFOV=math.radians(62.2)
         VFOV=math.radians(48.8)
         x, y, w, h = bounding_box
-        detection = (x + w/2, y + h/2)
+        # h is gowing from upper to lower side
+        x_pos = x + w/2
+        y_pos = self.img_size[1]- (y + h/2)
+        detection = (x_pos,y_pos)
+        # img_res=np.array((640,480))
+        cam_range=(math.tan(HFOV/2)*self.drone_amplitude*2,math.tan(VFOV/2)*self.drone_amplitude*2)
 
-        cam_range=(math.tan(HFOV)*self.drone_amplitude,math.tan(VFOV)*self.drone_amplitude)
 
+        # target_pos_rel=np.multiply(np.divide(detection, img_res), cam_range)
+        target_pos_rel=np.multiply(np.divide(detection, self.img_size)-np.array([0.5, 0.5]), cam_range)
 
-        target_pos_rel=np.multiply(np.divide(detection, self.img_size), cam_range)
         print("position")
         print(target_pos_rel)
-        return target_pos_rel
+        print("position matmul")
+        print("yaw")
+        print(self.yaw)
+
+        # Negative Yaw!
+        pt = np.matmul(self.Rot(-self.yaw), target_pos_rel)
+        pos = [pt[0,1], pt[0,0]]
+        print(pos)
+
+        return pos
+
+    def Rot(self, yaw):
+        # yaw = math.radians(yaw)
+        res = np.matrix([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
+        return res
 
 def main(args=None):
     rclpy.init(args=args)
