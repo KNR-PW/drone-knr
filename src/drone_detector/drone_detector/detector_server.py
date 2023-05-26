@@ -191,27 +191,32 @@ class DetectorServer(Node):
         HFOV=math.radians(62.2)
         VFOV=math.radians(48.8)
         x, y, w, h = bounding_box
-        detection = (x + w/2,y + h/2)
-        img_res=np.array((640,480))
-        cam_range=(math.tan(HFOV)*self.drone_amplitude,math.tan(VFOV)*self.drone_amplitude)
+        # h is gowing from upper to lower side
+        x_pos = x + w/2
+        y_pos = self.img_size[1]- (y + h/2)
+        detection = (x_pos,y_pos)
+        # img_res=np.array((640,480))
+        cam_range=(math.tan(HFOV/2)*self.drone_amplitude*2,math.tan(VFOV/2)*self.drone_amplitude*2)
 
 
         # target_pos_rel=np.multiply(np.divide(detection, img_res), cam_range)
-        target_pos_rel=np.multiply(np.array([0.5, 0.5]) - np.divide(detection, img_res), cam_range)
+        target_pos_rel=np.multiply(np.divide(detection, self.img_size)-np.array([0.5, 0.5]), cam_range)
 
         print("position")
         print(target_pos_rel)
         print("position matmul")
         print("yaw")
         print(self.yaw)
-        pt = np.matmul(self.Rot(self.yaw), target_pos_rel)
-        pos = [pt[0,0], pt[0,1]]
+
+        # Negative Yaw!
+        pt = np.matmul(self.Rot(-self.yaw), target_pos_rel)
+        pos = [pt[0,1], pt[0,0]]
         print(pos)
 
         return pos
 
     def Rot(self, yaw):
-        yaw = math.radians(yaw)
+        # yaw = math.radians(yaw)
         res = np.matrix([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
         return res
 
