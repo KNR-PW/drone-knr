@@ -1,0 +1,14 @@
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(
+            package='drone_detector',
+            executable='detector_server',
+        ),
+        Node(
+            package='drone_hardware',
+            executable='drone_handler',
+        )
+    ])
