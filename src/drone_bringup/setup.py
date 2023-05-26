@@ -1,4 +1,8 @@
 from setuptools import setup
+from glob import glob
+import os
+from distutils.core import setup
+from catkin_pkg.python_setup import generate_distutils_setup
 
 package_name = 'drone_bringup'
 
@@ -10,6 +14,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name), glob('launch/*.launch.py'))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
