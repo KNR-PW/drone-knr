@@ -59,7 +59,8 @@ class DetectorServer(Node):
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
-        self.img_size = (640, 480)
+        self.img_size = (1920, 1080)
+        self.pub_img_size = (640, 480)
         self.series_counter = 0
         self.photos_path = "/home/stas/Dron/drone_photos/"
         self.detections_list_msg = DetectionsList()
@@ -75,7 +76,8 @@ class DetectorServer(Node):
     def timer_callback(self):
         ret, frame = self.video_capture.read()
         if ret:
-            frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_LINEAR)
+            frame = cv2.blur(frame, (10, 10)) 
+            frame = cv2.resize(frame, self.pub_img_size, interpolation=cv2.INTER_LINEAR)
             self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
 
     def take_photo_callback(self, request, response):
@@ -102,7 +104,8 @@ class DetectorServer(Node):
         self.get_logger().info('Reading frame')
         ret, frame = self.video_capture.read()
         if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.blur(frame, (10, 10)) 
             self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
         else:
             self.get_logger().info('Reading frame failed:(')
