@@ -44,6 +44,7 @@ class Ui_MainWindow(object):
 
         # value to handle stoping and playing video
         self.run_video = True
+        
 
     def ros_shutdown(self):
         self.node.destroy_node()
@@ -85,7 +86,7 @@ class Ui_MainWindow(object):
                 # Display normal image on label
                 self.label_2.setPixmap(converted_frame)
         # Display thresholded image on label2
-        self.frame = self.frame.astype(np.uint8)
+        # self.frame = self.frame.astype(np.uint8)
         mask = cv2.inRange(self.frame, np.array([self.R_lower, self.G_lower, self.B_lower]),
                            np.array([self.R_upper, self.G_upper, self.B_upper]))
         masked_frame = cv2.bitwise_and(self.frame, self.frame, mask=mask)
@@ -109,8 +110,9 @@ class Ui_MainWindow(object):
     def image_callback(self, img):
         print("image callback")
         frame = self.br.imgmsg_to_cv2(img)
-        self.got_frame = True
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        self.got_frame = True
         self.frame = frame.astype(np.uint8)
 
     def convert_cv_qt(self, cv_img):
@@ -119,7 +121,7 @@ class Ui_MainWindow(object):
         rgb_image = cv_img
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
-        convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
+        convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_BGR888)
         p = convert_to_Qt_format.scaled(self.disply_width, self.display_height, Qt.KeepAspectRatio)
         return QPixmap.fromImage(p)
 
@@ -328,9 +330,6 @@ class Ui_MainWindow(object):
         # Set spinbox to slider value
         self.spinBox.setValue(value)
 
-        print("Slider 1 changed")
-        print(value)
-
     def slider_2_changed(self):
         # Lower GREEN
         value = self.horizontalSlider_2.value()
@@ -338,8 +337,6 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_2.setValue(value)
-        print("Slider 2 changed")
-        print(value)
 
     def slider_3_changed(self):
         #  Lower BLUE
@@ -348,8 +345,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_3.setValue(value)
-        print("Slider 3 changed")
-        print(value)
+
 
     def slider_4_changed(self):
         # Upper RED
@@ -358,8 +354,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_4.setValue(value)
-        print("Slider 4 changed")
-        print(value)
+
 
     def slider_5_changed(self):
         #  Upper GREEN
@@ -368,8 +363,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_5.setValue(value)
-        print("Slider 5 changed")
-        print(value)
+
 
     def slider_6_changed(self):
         #  Upper BLUE
@@ -378,8 +372,7 @@ class Ui_MainWindow(object):
 
         # Set spinbox to slider value
         self.spinBox_6.setValue(value)
-        print("Slider 6 changed")
-        print(value)
+
 
     def radio_button_update(self):
         if self.radioButton.isChecked():

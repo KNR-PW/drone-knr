@@ -76,7 +76,6 @@ class Ui_MainWindow(object):
         self.node.goto_rel_action_client = ActionClient(self.node, GotoRelative, 'goto_relative')
         self.node.arm_action_client = ActionClient(self.node, Arm, 'Arm')
         self.node.takeoff_action_client = ActionClient(self.node, Takeoff, 'takeoff')
-
     def ros_send_goto_relative(self, north, east, down):
         self.node.get_logger().info("Sending goto relative action goal")
         goal_msg = GotoRelative.Goal()
@@ -88,6 +87,7 @@ class Ui_MainWindow(object):
 
         self.node.goto_rel_action_client.send_goal_async(goal_msg)
         self.node.get_logger().info("Goto action sent")
+
 
     def gps_timer_update(self):
         self.ros_update_position()
@@ -628,8 +628,8 @@ class Ui_MainWindow(object):
         north = self.north_lineEdit.text() or "0"
         east = self.east_lineEdit.text() or "0"
         down = self.down_lineEdit.text() or "0"
-
-        if not north.lstrip('-').isdigit() or not east.lstrip('-').isdigit() or not down.lstrip('-').isdigit():
+        print(north.lstrip('-').replace(".", ""))
+        if not north.lstrip('-').replace(".", "").isdigit() or not east.lstrip('-').replace(".", "").isdigit() or not down.lstrip('-').replace(".", "").isdigit():
             self.error_popup()
         else:
             self.ros_send_goto_relative(float(north), float(east), float(down))
