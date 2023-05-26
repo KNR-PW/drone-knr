@@ -76,7 +76,6 @@ class Ui_MainWindow(object):
         self.node.goto_rel_action_client = ActionClient(self.node, GotoRelative, 'goto_relative')
         self.node.arm_action_client = ActionClient(self.node, Arm, 'Arm')
         self.node.takeoff_action_client = ActionClient(self.node, Takeoff, 'takeoff')
-
     def ros_send_goto_relative(self, north, east, down):
         self.node.get_logger().info("Sending goto relative action goal")
         goal_msg = GotoRelative.Goal()
@@ -88,6 +87,7 @@ class Ui_MainWindow(object):
 
         self.node.goto_rel_action_client.send_goal_async(goal_msg)
         self.node.get_logger().info("Goto action sent")
+
 
     def gps_timer_update(self):
         self.ros_update_position()
