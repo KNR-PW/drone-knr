@@ -313,6 +313,7 @@ def circles_calc(l_coordru, l_coordrd, l_coordld, l_coordlu):
 
     n_circles = n_width*n_length
 
+    # circle number check
     if n_circles != 100:
         print("wrong number of circles, something's wrong")
 

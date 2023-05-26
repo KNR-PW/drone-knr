@@ -9,12 +9,30 @@ import argparse
 from pymavlink import mavutil # Needed for command message definitions
 import haversine as hv # because the dronekit one doesn't work near Poles hehe xD
 
+
+def get_distance_global(aLocation1, aLocation2):
+    coord1 = (aLocation1.lat, aLocation1.lon)
+    coord2 = (aLocation2.lat, aLocation2.lon)
+
+    return hv.haversine(coord1, coord2)*1000 # because we want it in metres
+
+
+def get_distance_metres_ned(aLocation1, aLocation2):
+    dnorth = aLocation2.north - aLocation1.north
+    deast = aLocation2.east - aLocation1.east
+    return math.sqrt((dnorth*dnorth) + (deast*deast))
+
+
+
+
+
 from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw, SetMode
-from drone_interfaces.action import GotoRelative, GotoGlobal, GotoLocal, Arm, Takeoff
+from drone_interfaces.action import GotoRelative, GotoGlobal, GotoLocal, Arm, Takeoff, PhotosTour
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from example_interfaces.srv import AddTwoInts
 
+# TODO DET2POS, PHOTOSTOUR ACTION SERVER
 
 class DroneNavigator(Node):
 
@@ -41,6 +59,8 @@ class DroneNavigator(Node):
         self.goto_local = ActionClient(self, GotoLocal, 'goto_local')
         self.arm = ActionClient(self, Arm, 'Arm')
         self.takeoff = ActionClient(self, Takeoff, 'takeoff')
+
+        self.photos_tour = ActionClient(self, PhotosTour, 'photos_tour')
 
         ##CONNECT TO COPTER
         parser = argparse.ArgumentParser(description='commands')
@@ -115,7 +135,16 @@ class DroneNavigator(Node):
         return self.goto_rel.send_goal(goal_msg)
     
 
-    
+    def photos_tour_goal(self, length, width):
+        goal_msg = PhotosTour.Goal()
+        goal_msg.length = length
+        goal_msg.width = width
+
+        self.photos_tour.wait_for_server()
+
+        return self.photos_tour.send_goal(goal_msg)
+
+
 
     def __del__(self):
         self.vehicle.mode=VehicleMode("RTL")
@@ -128,7 +157,7 @@ def main():
 
     rclpy.spin(drone)
 
-    # drone.destroy_node()
+    drone.destroy_node()
 
     rclpy.shutdown()
     
