@@ -50,8 +50,8 @@ class DetectorServer(Node):
         self.timer = self.create_timer(0.5, self.timer_callback)
 
         self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
-        while not self.gps_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('gps service not available, waiting again...')
+        # while not self.gps_cli.wait_for_service(timeout_sec=1.0):
+        #     self.get_logger().info('gps service not available, waiting again...')
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
         self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
         self.br = CvBridge()
