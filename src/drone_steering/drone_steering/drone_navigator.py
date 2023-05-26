@@ -75,7 +75,7 @@ class DroneNavigator(Node):
         #     return response
         
 
-    def arm_goal(self, goal):
+    def arm_goal(self):
         goal_msg = Arm.Goal()
         
         return self.arm.send_goal(goal_msg)
