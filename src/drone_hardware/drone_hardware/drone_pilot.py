@@ -81,43 +81,6 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def set_yaw(self, yaw, relative=False):
-        if yaw<0:
-            yaw+=6.283185
-        yaw = yaw / 3.141592 * 180
-        if abs(self.vehicle.attitude.yaw - yaw) > 3.141592:
-            dir = 1 if self.vehicle.attitude.yaw < yaw else -1
-        else:
-            dir = 1 if self.vehicle.attitude.yaw > yaw else -1
-        if relative:
-            is_relative=1 #yaw relative to direction of travel
-        else:
-            is_relative=0 #yaw is an absolute angle
-        # create the CONDITION_YAW command using command_long_encode()
-        msg = self.vehicle.message_factory.command_long_encode(
-            0, 0,        # target system, target component
-            mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
-            0,           #confirmation
-            yaw,         # param 1, yaw in degrees
-            0,           # param 2, yaw speed deg/s
-            1,           # param 3, direction -1 ccw, 1 cw
-            is_relative, # param 4, relative offset 1, absolute angle 0
-            0, 0, 0)     # param 5 ~ 7 not used
-        # send command to vehicle
-        self.vehicle.send_mavlink(msg)
-
-    def set_servo(self, servo_id, pwm):
-        msg = self.vehicle.message_factory.command_long_encode(
-            0,          # time_boot_ms (not used)
-            0, 0,       # target system, target component
-            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
-            0,          #not used
-            servo_id,   #number of servo instance
-            pwm,        #pwm value for servo control
-            0,0,0,0,0,) #not used
-        # send command to vehicle
-        self.vehicle.send_mavlink(msg)
-
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.vehicle.location.local_frame.north
         deast = location.east - self.vehicle.location.local_frame.east
