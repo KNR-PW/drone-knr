@@ -23,7 +23,6 @@ class DroneNavigator(Node):
         self.get_logger().info("Hello wrold")
 
 
-
         # ## DECLARE SERVICES
         # self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
         # self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
