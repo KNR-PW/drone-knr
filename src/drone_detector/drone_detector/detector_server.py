@@ -46,10 +46,9 @@ class DetectorServer(Node):
                                                                 "detector_thresholds",
                                                                 self.thresholds_callback,
                                                                 10)
-        self.camera_subscription = self.create_subscription(Image,
-                                                                "camera",
-                                                                self.camera_callback,
-                                                                10)
+        self.frames_pub = self.create_publisher(Image, "/camera", 10)
+        self.timer = self.create_timer(0.5, self.timer_callback)
+
         self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
         while not self.gps_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('gps service not available, waiting again...')
@@ -62,24 +61,22 @@ class DetectorServer(Node):
         self.detections = []
         self.img_size = (640, 480)
         self.series_counter = 0
-        self.photos_path = "/home/stas/Dron/simulation_photos/"
+        self.photos_path = "/home/stas/Dron/drone_photos/"
         self.detections_list_msg = DetectionsList()
         self.frame = None
         self.yaw = 0
         self.drone_amplitude = 0
+        self.video_capture = cv2.VideoCapture(0)
+        while (self.video_capture.isOpened() == False):
+            self.get_logger().info('Waiting for camera video cpture to open...')
+        _, self.frame = self.video_capture.read()
         self.get_logger().info('DetectorServer node created')
-        # self.video_capture = cv2.VideoCapture(0)
-        # while (self.video_capture.isOpened() == False):
-        #     self.get_logger().info('Waiting for camera video cpture to open...')
-        # _, self.frame = self.video_capture.read()
 
-    def camera_callback(self, img):
-        # self.get_logger().info("Recieving frame")
-        frame = self.br.imgmsg_to_cv2(img)
-        frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_LINEAR)
-        # convert frame in simulation
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        self.frame = frame
+    def timer_callback(self):
+        ret, frame = self.video_capture.read()
+        if ret:
+            frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_LINEAR)
+            self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
 
     def take_photo_callback(self, request, response):
 
@@ -101,13 +98,22 @@ class DetectorServer(Node):
 
         return response
 
+    def read_frame(self):
+        self.get_logger().info('Reading frame')
+        ret, frame = self.video_capture.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
+        else:
+            self.get_logger().info('Reading frame failed:(')
+
     def detect_trees_callback(self, request, response):
         self.get_logger().info('Incoming detection request')
         self.drone_amplitude= -request.gps[2]
         self.yaw = request.yaw
         # self.read_frame()
         # self.update_position()
- 
+        self.read_frame()
         self.detection(self.frame)
         self.detections_to_msg()
         response.detections_list = self.detections_list_msg
@@ -164,26 +170,7 @@ class DetectorServer(Node):
 
         self.detections_list_msg.detections_list = temp_detection_list_msg.detections_list
 
-    def update_position(self):
-        self.gps_ready = 0
-        self.get_logger().info('Sending GPS request')
-        request_gps = GetLocationRelative.Request()
-        # gps_future = self.gps_cli.call_async(request_gps)
-        # gps_future.add_done_callback(self.gps_get_result)
-        # rclpy.spin_until_future_complete(self, gps_future, timeout_sec=5)
 
-    def gps_get_result(self, gps_future):
-        if gps_future.result() is not None:
-            self.north = gps_future.result().north
-            self.east = gps_future.result().east
-            self.down = gps_future.result().down
-            self.drone_amplitude = -self.down
-            self.get_logger().info('GPS Recieved')
-        else:
-            self.get_logger().info('GPS request failed')
-            self.drone_amplitude = 0
-        self.gps_ready = 1
-        
     def det2pos(self, bounding_box):
 
         print("heighth")
