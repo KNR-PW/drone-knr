@@ -4,14 +4,16 @@ from pymavlink import mavutil
 import time
 
 
-parser = argparse.ArgumentParser(description='commands')
-parser.add_argument('--connect', default='127.0.0.1:14550')
-args = parser.parse_args()
+# parser = argparse.ArgumentParser(description='commands')
+# parser.add_argument('--connect', default='127.0.0.1:14550')
+# args = parser.parse_args()
 
-connection_string = args.connect
+# connection_string = args.connect
+connection_string = "/dev/serial0"
+baud_rate = 921600
 
-
-vehicle = dronekit.connect('/dev/serial0', wait_ready=False) #doesnt work with wait_ready=True
+# vehicle = dronekit.connect('/dev/serial0', wait_ready=False) #doesnt work with wait_ready=True
+vehicle = dronekit.connect(connection_string, baud=baud_rate, wait_ready=False)
 
 def get_attitude():
     roll=vehicle.attitude.roll
