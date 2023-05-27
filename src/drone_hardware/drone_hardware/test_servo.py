@@ -56,7 +56,7 @@ stop = 1000
 # set_servo(9,right)
 # input("right")
 
-def shoot_servo(dir):
+def shoot_servo():
     input(dir)
     if dir == 'left':
         site = 2000
@@ -86,8 +86,8 @@ config()
 
 
 while True:
-    shoot_servo('left')
-    shoot_servo('right')
+    shoot_servo()
+    # shoot_servo('right')
 
 print("Script end")
 
