@@ -9,7 +9,7 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff, Shoot
+from drone_interfaces.action import GotoRelative, GotoGlobal, GotoLocal, Arm, Takeoff, Shoot
 
 class DroneHandler(Node):
     def __init__(self):
@@ -18,6 +18,7 @@ class DroneHandler(Node):
         ## DECLARE ACTIONS
         self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_callback)
         self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_callback)
+        self.goto_local = ActionServer(self, GotoLocal, 'goto_local', self.goto_local_callback)
         self.arm = ActionServer(self,Arm, 'Arm',self.arm_callback)
         self.takeoff = ActionServer(self, Takeoff, 'takeoff',self.takeoff_callback)
         self.shoot = ActionServer(self, Shoot, 'shoot', self.shoot_callback)
@@ -169,6 +170,38 @@ class DroneHandler(Node):
         self.state = "OK"
         result = GotoGlobal.Result()
         result.result = 1
+
+        return result
+    
+    def goto_relative_callback(self, goal_handle):
+        self.get_logger().info(f'-- Goto local action registered. Destination: --')
+
+        north = goal_handle.request.north
+        east = goal_handle.request.east
+        down = goal_handle.request.down
+        destination = LocationLocal(north, east, down)
+
+        self.get_logger().info(f'North: {destination.north}')
+        self.get_logger().info(f'East: {destination.east}')
+        self.get_logger().info(f'Down: {destination.down}')
+
+        self.state = "BUSY"
+
+        self.goto_position_target_local_ned(destination.north, destination.east, destination.down)
+
+        feedback_msg = GotoLocal.Feedback()
+        feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+        self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
+
+        while feedback_msg.distance>0.5:
+            feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+            self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
+            time.sleep(1)
+
+        goal_handle.succeed()
+        self.state = "OK"
+        result = GotoLocal.Result()
+        result.result=1
 
         return result
     
