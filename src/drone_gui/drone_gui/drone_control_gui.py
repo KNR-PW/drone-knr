@@ -464,6 +464,8 @@ class Ui_MainWindow(object):
     def init_my_components(self):
         self.step_spinBox.setMinimum(0)
         self.step_spinBox.setMaximum(5000)
+        self.pwm_spinBox.setMinimum(0)
+        self.pwm_spinBox.setMaximum(5000)
 
         self.log_textEdit.setReadOnly(True)
 
