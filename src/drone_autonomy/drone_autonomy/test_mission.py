@@ -14,22 +14,23 @@ class DroneMission:
 
         self.detections=list()
 
-        parser = argparse.ArgumentParser(description='commands')
-        parser.add_argument('--connect', default='127.0.0.1:14550')
-        args = parser.parse_args()
+        # parser = argparse.ArgumentParser(description='commands')
+        # parser.add_argument('--connect', default='127.0.0.1:14550')
+        # args = parser.parse_args()
 
-        connection_string = args.connect
+        # connection_string = args.connect
 
-        # if we don't pass any connection string, it runs sitl
-        sitl = None
+        # # if we don't pass any connection string, it runs sitl
+        # sitl = None
 
-        if not connection_string:
-            print("Start simulator (SITL)")
-            import dronekit_sitl
-            sitl = dronekit_sitl.start_default()
-            connection_string = sitl.connection_string()
+        # if not connection_string:
+        #     print("Start simulator (SITL)")
+        #     import dronekit_sitl
+        #     sitl = dronekit_sitl.start_default()
+        #     connection_string = sitl.connection_string()
 
-        baud_rate = 57600
+        connection_string = "/dev/serial0"
+        baud_rate = 921600
         self.vehicle = connect(connection_string, baud=baud_rate, wait_ready=False) #doesnt work with wait_ready=True
 
         return None
@@ -359,10 +360,10 @@ def main():
 
     time.sleep(2)
 
-    coordru = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
-    coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
-    coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
-    coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
+    coordru = LocationGlobal(lat=52.1470921,lon=20.7510100,alt=altit)
+    coordrd = LocationGlobal(lat=52.1471336,lon=20.7500514,alt=altit)
+    coordld = LocationGlobal(lat=52.1474379,lon=20.7500859,alt=altit)
+    coordlu = LocationGlobal(lat=52.147310,lon=20.751095,alt=altit)
     
     drone.goto_position_global(coordru)
     time.sleep(1)
