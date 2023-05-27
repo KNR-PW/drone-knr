@@ -62,7 +62,7 @@ class DetectorServer(Node):
         self.img_size = (640, 480)
         self.pub_img_size = (640, 480)
         self.series_counter = 0
-        self.photos_path = "/home/stas/Dron/drone_photos/"
+        self.photos_path = "/home/raspberrypi/Drone/drone_photos/"
         self.detections_list_msg = DetectionsList()
         self.frame = None
         self.yaw = 0
