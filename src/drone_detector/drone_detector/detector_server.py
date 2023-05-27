@@ -59,7 +59,7 @@ class DetectorServer(Node):
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
-        self.img_size = (1920, 1080)
+        self.img_size = (640, 480)
         self.pub_img_size = (640, 480)
         self.series_counter = 0
         self.photos_path = "/home/stas/Dron/drone_photos/"
