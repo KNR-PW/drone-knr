@@ -133,17 +133,17 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def set_servo(self, servo_id, pwm):
-        msg = self.vehicle.message_factory.command_long_encode(
+    def set_servo(servo_id, pwm):
+        msg = vehicle.message_factory.command_long_encode(
             0,          # time_boot_ms (not used)
-            0, 0,       # target system, target component
+            0,   # target system, target component
             mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
             0,          #not used
             servo_id,   #number of servo instance
             pwm,        #pwm value for servo control
-            0,0,0,0,0,) #not used
+            0,0,0,0,0) #not used
         # send command to vehicle
-        self.vehicle.send_mavlink(msg)
+        vehicle.send_mavlink(msg)
 
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.vehicle.location.local_frame.north
