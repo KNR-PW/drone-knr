@@ -17,7 +17,6 @@ class DroneHandler(Node):
         ## DECLARE SERVICES
         self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
         self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
-        self.servo = self.create_service(SetServo, 'set_servo', self.set_servo_callback)
         self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
         self.mode = self.create_service(SetMode, 'set_mode',self.set_mode_callback)
        
@@ -44,7 +43,28 @@ class DroneHandler(Node):
         self.state = "OK"
         self.get_logger().info("Copter connected, ready to arm") 
         
-        
+    ## HELPER METHODS
+    def set_yaw(self, yaw):
+        if yaw<0:
+            yaw+=6.283185
+        yaw = yaw / 3.141592 * 180
+        if abs(self.vehicle.attitude.yaw - yaw) > 3.141592:
+            dir = 1 if self.vehicle.attitude.yaw < yaw else -1
+        else:
+            dir = 1 if self.vehicle.attitude.yaw > yaw else -1
+        # create the CONDITION_YAW command using command_long_encode()
+        msg = self.vehicle.message_factory.command_long_encode(
+            0, 0,        # target system, target component
+            mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
+            0,           #confirmation
+            yaw,         # param 1, yaw in degrees
+            0,           # param 2, yaw speed deg/s
+            dir,           # param 3, direction -1 ccw, 1 cw
+            0, # param 4, relative offset 1, absolute angle 0
+            0, 0, 0)     # param 5 ~ 7 not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+
     ## SERVICE CALLBACKS
     def get_attitude_callback(self, request, response):
         temp = self.vehicle.attitude
@@ -71,11 +91,6 @@ class DroneHandler(Node):
     def set_yaw_callback(self, request, response):
         self.set_yaw(request.yaw)
         response = SetYaw.Response()
-        return response
-
-    def set_servo_callback(self, request, response):
-        self.set_servo(request.servo_id, request.pwm)
-        response = SetServo.Response()
         return response
     
     def set_mode_callback(self, request, response):

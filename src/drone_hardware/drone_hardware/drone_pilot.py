@@ -9,17 +9,19 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff
+from drone_interfaces.action import GotoRelative, GotoGlobal, GotoLocal, Arm, Takeoff, Shoot
 
 class DroneHandler(Node):
     def __init__(self):
         super().__init__('drone_handler')
 
         ## DECLARE ACTIONS
-        self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
-        self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
+        self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_callback)
+        self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_callback)
+        self.goto_local = ActionServer(self, GotoLocal, 'goto_local', self.goto_local_callback)
         self.arm = ActionServer(self,Arm, 'Arm',self.arm_callback)
         self.takeoff = ActionServer(self, Takeoff, 'takeoff',self.takeoff_callback)
+        self.shoot = ActionServer(self, Shoot, 'shoot', self.shoot_callback)
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
@@ -81,43 +83,6 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def set_yaw(self, yaw, relative=False):
-        if yaw<0:
-            yaw+=6.283185
-        yaw = yaw / 3.141592 * 180
-        if abs(self.vehicle.attitude.yaw - yaw) > 3.141592:
-            dir = 1 if self.vehicle.attitude.yaw < yaw else -1
-        else:
-            dir = 1 if self.vehicle.attitude.yaw > yaw else -1
-        if relative:
-            is_relative=1 #yaw relative to direction of travel
-        else:
-            is_relative=0 #yaw is an absolute angle
-        # create the CONDITION_YAW command using command_long_encode()
-        msg = self.vehicle.message_factory.command_long_encode(
-            0, 0,        # target system, target component
-            mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
-            0,           #confirmation
-            yaw,         # param 1, yaw in degrees
-            0,           # param 2, yaw speed deg/s
-            1,           # param 3, direction -1 ccw, 1 cw
-            is_relative, # param 4, relative offset 1, absolute angle 0
-            0, 0, 0)     # param 5 ~ 7 not used
-        # send command to vehicle
-        self.vehicle.send_mavlink(msg)
-
-    def set_servo(self, servo_id, pwm):
-        msg = self.vehicle.message_factory.command_long_encode(
-            0,          # time_boot_ms (not used)
-            0, 0,       # target system, target component
-            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
-            0,          #not used
-            servo_id,   #number of servo instance
-            pwm,        #pwm value for servo control
-            0,0,0,0,0,) #not used
-        # send command to vehicle
-        self.vehicle.send_mavlink(msg)
-
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.vehicle.location.local_frame.north
         deast = location.east - self.vehicle.location.local_frame.east
@@ -129,10 +94,22 @@ class DroneHandler(Node):
         dlon = (location.lon - self.vehicle.location.global_relative_frame.lon) * 1.113195e5 ## lat/lon to meters convert magic number
         ddown = location.down - self.vehicle.location.global_relative_frame.down
         return math.sqrt(dlat*dlat + dlon*dlon + ddown*ddown)
+    
+    def set_servo(self, servo_id, pwm):
+        msg = self.vehicle.message_factory.command_long_encode(
+            0,          # time_boot_ms (not used)
+            0,   # target system, target component
+            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
+            0,          #not used
+            servo_id,   #number of servo instance
+            pwm,        #pwm value for servo control
+            0,0,0,0,0) #not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
 
    
     ## ACTION CALLBACKS
-    def goto_relative_action(self, goal_handle):
+    def goto_relative_callback(self, goal_handle):
         self.get_logger().info(f'-- Goto relative action registered. Destination in local frame: --')
 
         north = self.vehicle.location.local_frame.north + goal_handle.request.north
@@ -164,7 +141,7 @@ class DroneHandler(Node):
 
         return result
     
-    def goto_global_action(self, goal_handle):
+    def goto_global_callback(self, goal_handle):
         self.get_logger().info(f'-- Goto global action registered. Destination in global frame: --')
 
         lat = self.vehicle.location.global_relative_frame.lat + goal_handle.request.lat
@@ -193,6 +170,38 @@ class DroneHandler(Node):
         self.state = "OK"
         result = GotoGlobal.Result()
         result.result = 1
+
+        return result
+    
+    def goto_relative_callback(self, goal_handle):
+        self.get_logger().info(f'-- Goto local action registered. Destination: --')
+
+        north = goal_handle.request.north
+        east = goal_handle.request.east
+        down = goal_handle.request.down
+        destination = LocationLocal(north, east, down)
+
+        self.get_logger().info(f'North: {destination.north}')
+        self.get_logger().info(f'East: {destination.east}')
+        self.get_logger().info(f'Down: {destination.down}')
+
+        self.state = "BUSY"
+
+        self.goto_position_target_local_ned(destination.north, destination.east, destination.down)
+
+        feedback_msg = GotoLocal.Feedback()
+        feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+        self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
+
+        while feedback_msg.distance>0.5:
+            feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+            self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
+            time.sleep(1)
+
+        goal_handle.succeed()
+        self.state = "OK"
+        result = GotoLocal.Result()
+        result.result=1
 
         return result
     
@@ -245,8 +254,35 @@ class DroneHandler(Node):
         result.result = 1
 
         return result
+    
+    def shoot_callback(self, goal_handle):
+        stop = 1000
+        shoot = 1200
+        load =1500
 
+        left = 2000
+        mid = 1400
+        right = 800
 
+        self.set_servo(10,stop)
+        self.set_servo(11,stop)
+        time.sleep(1)
+        self.set_servo(9,left if goal_handle.request.color == 'yellow' else right)
+        self.set_servo(10,load)
+        self.set_servo(11,load)
+        time.sleep(2)
+        self.set_servo(10,shoot)
+        self.set_servo(11,shoot)
+        self.set_servo(9,mid - 300 if goal_handle.request.color == 'yellow' else mid+300)
+        time.sleep(1)
+        self.set_servo(10,stop)
+        self.set_servo(11,stop)
+        self.set_servo(9,mid)
+
+        self.get_logger().info("Shoot action completed:" + goal_handle.request.side)
+        goal_handle.succeed()
+        result = Shoot.Result()
+        return result
 
 def main():
     rclpy.init()
