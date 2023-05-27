@@ -168,6 +168,7 @@ class DroneHandler(Node):
         self.get_logger().info(f"Pitch: {response.pitch}")
         self.get_logger().info(f"Yaw: {response.yaw}")
         return response
+        
     
     def get_location_relative_callback(self, request, response):
         temp = self.vehicle.location.local_frame
