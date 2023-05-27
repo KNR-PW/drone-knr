@@ -11,7 +11,7 @@ args = parser.parse_args()
 connection_string = args.connect
 
 
-vehicle = dronekit.connect('/dev/ttyACM0', wait_ready=False) #doesnt work with wait_ready=True
+vehicle = dronekit.connect('/dev/serial0', wait_ready=False) #doesnt work with wait_ready=True
 
 def get_attitude():
     roll=vehicle.attitude.roll
