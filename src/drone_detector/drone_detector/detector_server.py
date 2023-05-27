@@ -200,7 +200,7 @@ class DetectorServer(Node):
 
         # Negative Yaw!
         pt = np.matmul(self.Rot(-self.yaw), target_pos_rel)
-        pos = [int(pt[0,1]), int(pt[0,0])]
+        pos = [pt[0,1], pt[0,0]]
         print(pos)
 
         return pos
