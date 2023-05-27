@@ -17,7 +17,6 @@ class DroneHandler(Node):
         ## DECLARE SERVICES
         self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
         self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
-        self.servo = self.create_service(SetServo, 'set_servo', self.set_servo_callback)
         self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
         self.mode = self.create_service(SetMode, 'set_mode',self.set_mode_callback)
        
@@ -66,19 +65,6 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def set_servo(self, servo_id, pwm):
-        msg = self.vehicle.message_factory.command_long_encode(
-            0,          # time_boot_ms (not used)
-            0, 0,       # target system, target component
-            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
-            0,          #not used
-            servo_id,   #number of servo instance
-            pwm,        #pwm value for servo control
-            0,0,0,0,0,) #not used
-        # send command to vehicle
-        self.vehicle.send_mavlink(msg)
-
-
     ## SERVICE CALLBACKS
     def get_attitude_callback(self, request, response):
         temp = self.vehicle.attitude
@@ -105,11 +91,6 @@ class DroneHandler(Node):
     def set_yaw_callback(self, request, response):
         self.set_yaw(request.yaw)
         response = SetYaw.Response()
-        return response
-
-    def set_servo_callback(self, request, response):
-        self.set_servo(request.servo_id, request.pwm)
-        response = SetServo.Response()
         return response
     
     def set_mode_callback(self, request, response):

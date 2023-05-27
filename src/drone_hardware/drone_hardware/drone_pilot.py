@@ -251,9 +251,6 @@ class DroneHandler(Node):
         result = Shoot.Result()
         return result
 
-
-
-
 def main():
     rclpy.init()
     
