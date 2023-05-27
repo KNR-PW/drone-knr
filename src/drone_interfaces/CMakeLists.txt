@@ -22,6 +22,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/GotoRelative.action"
   "action/GotoGlobal.action"
   "action/Arm.action"
+  "action/Shoot.action"
   "action/Takeoff.action"
   "srv/DetectTrees.srv"
   "srv/TakePhoto.srv"
