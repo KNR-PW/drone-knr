@@ -9,17 +9,18 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff
+from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff, Shoot
 
 class DroneHandler(Node):
     def __init__(self):
         super().__init__('drone_handler')
 
         ## DECLARE ACTIONS
-        self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
-        self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
+        self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_callback)
+        self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_callback)
         self.arm = ActionServer(self,Arm, 'Arm',self.arm_callback)
         self.takeoff = ActionServer(self, Takeoff, 'takeoff',self.takeoff_callback)
+        self.shoot = ActionServer(self, Shoot, 'shoot', self.shoot_callback)
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
@@ -92,10 +93,22 @@ class DroneHandler(Node):
         dlon = (location.lon - self.vehicle.location.global_relative_frame.lon) * 1.113195e5 ## lat/lon to meters convert magic number
         ddown = location.down - self.vehicle.location.global_relative_frame.down
         return math.sqrt(dlat*dlat + dlon*dlon + ddown*ddown)
+    
+    def set_servo(self, servo_id, pwm):
+        msg = self.vehicle.message_factory.command_long_encode(
+            0,          # time_boot_ms (not used)
+            0,   # target system, target component
+            mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
+            0,          #not used
+            servo_id,   #number of servo instance
+            pwm,        #pwm value for servo control
+            0,0,0,0,0) #not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
 
    
     ## ACTION CALLBACKS
-    def goto_relative_action(self, goal_handle):
+    def goto_relative_callback(self, goal_handle):
         self.get_logger().info(f'-- Goto relative action registered. Destination in local frame: --')
 
         north = self.vehicle.location.local_frame.north + goal_handle.request.north
@@ -127,7 +140,7 @@ class DroneHandler(Node):
 
         return result
     
-    def goto_global_action(self, goal_handle):
+    def goto_global_callback(self, goal_handle):
         self.get_logger().info(f'-- Goto global action registered. Destination in global frame: --')
 
         lat = self.vehicle.location.global_relative_frame.lat + goal_handle.request.lat
@@ -208,6 +221,36 @@ class DroneHandler(Node):
         result.result = 1
 
         return result
+    
+    def shoot_callback(self, goal_handle):
+        stop = 1000
+        shoot = 1200
+        load =1500
+
+        left = 2000
+        mid = 1400
+        right = 800
+
+        self.set_servo(10,stop)
+        self.set_servo(11,stop)
+        time.sleep(1)
+        self.set_servo(9,left if goal_handle.request.color == 'yellow' else right)
+        self.set_servo(10,load)
+        self.set_servo(11,load)
+        time.sleep(2)
+        self.set_servo(10,shoot)
+        self.set_servo(11,shoot)
+        self.set_servo(9,mid - 300 if goal_handle.request.color == 'yellow' else mid+300)
+        time.sleep(1)
+        self.set_servo(10,stop)
+        self.set_servo(11,stop)
+        self.set_servo(9,mid)
+
+        self.get_logger().info("Shoot action completed:" + goal_handle.request.side)
+        goal_handle.succeed()
+        result = Shoot.Result()
+        return result
+
 
 
 
