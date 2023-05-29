@@ -17,14 +17,14 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetAttitude.srv"
   "srv/GetLocationRelative.srv"
   "srv/SetYaw.srv"
-  "srv/SetServo.srv"
   "srv/SetMode.srv"
   "action/GotoRelative.action"
   "action/GotoGlobal.action"
+  "action/GotoLocal.action"
   "action/Arm.action"
   "action/Takeoff.action"
+  "action/Shoot.action"
   "srv/DetectTrees.srv"
-  "srv/TakePhoto.srv"
  )
 ament_export_dependencies(rosidl_default_runtime)
 

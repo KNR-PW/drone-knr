@@ -6,7 +6,7 @@ import numpy as np
 from dronekit import connect, VehicleMode, LocationGlobal, LocationLocal, LocationGlobalRelative, APIException
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
-from drone_interfaces.srv import DetectTrees, GetLocationRelative, GetAttitude
+from drone_interfaces.srv import DetectTrees, GetLocationRelative, GetAttitude, SetYaw
 from drone_interfaces.action import GotoRelative
 from std_msgs.msg import Int32MultiArray
 import time
@@ -55,12 +55,17 @@ class Mission(Node):
         while not self.atti_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("attitude service not available, waiting again...")
         self.goto_rel_action_client = ActionClient(self, GotoRelative, "goto_relative")
+        self.yaw_cli = self.create_client(SetYaw, "set_yaw")
+        while not self.yaw_cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info("set yaw service not available, waiting again...")
         self.get_logger().info("GotoDetectionGroup node created")
         self.state = "OK"
+        altit = 10
         self.coordru = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
         self.coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
         self.coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
         self.coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
+        self.current_yaw = 0
 
     def set_area_coords(self, coordru, coordrd, coordld, coordlu):
         self.coordlu = coordlu
@@ -68,6 +73,12 @@ class Mission(Node):
         self.coordld = coordld
         self.coordru = coordru
         self.get_logger().info("Area coordinates set")
+
+    def send_set_yaw(self, yaw):
+        request = SetYaw.Request()
+        request.yaw = float(yaw)
+        self.yaw_cli.call_async(request)
+        self.get_logger().info("Yaw request sent")
 
     def send_detection_request(self, info=0, gps=[0.0, 0.0, 0.0], yaw=0.0):
         gps = [float(x) for x in gps]
@@ -86,6 +97,8 @@ class Mission(Node):
         relative_move = [0, 0]
         for det in det_list:
             self.get_logger().info("Going to next det")
+            self.send_set_yaw(self.current_yaw)
+            time.sleep(3)
             gps_position = det.gps_position
             self.send_goto_relative(
                 gps_position[0] - relative_move[0],
