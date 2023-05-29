@@ -38,6 +38,7 @@ class DroneHandler(Node):
         args = parser.parse_args()
 
         connection_string = args.connect
+        # connection_string = None
 
         sitl = None
 

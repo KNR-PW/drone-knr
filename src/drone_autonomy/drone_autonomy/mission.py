@@ -11,7 +11,7 @@ from drone_interfaces.action import GotoRelative
 from std_msgs.msg import Int32MultiArray
 import time
 from rclpy.action import ActionClient
-
+import haversine as hv
 
 class Detection:
     def __init__(self, bounding_box=(0, 0, 0, 0), color="", gps_pos=(0, 0)):
@@ -56,6 +56,7 @@ class Mission(Node):
             self.get_logger().info("attitude service not available, waiting again...")
         self.goto_rel_action_client = ActionClient(self, GotoRelative, "goto_relative")
         self.get_logger().info("GotoDetectionGroup node created")
+        self.state = "OK"
 
     def send_detection_request(self, info=0, gps=[0.0, 0.0, 0.0], yaw=0.0):
         gps = [float(x) for x in gps]
@@ -82,7 +83,9 @@ class Mission(Node):
             )
             relative_move[0] += gps_position[0]
             relative_move[1] += gps_position[1]
-            time.sleep(15)
+            while self.state == "BUSY":
+                self.get_logger().info("Waiting for goto det")
+                time.sleep(1)
 
     def get_gps(self):
         self.get_logger().info("Sending GPS request")
@@ -111,6 +114,7 @@ class Mission(Node):
         return yaw
 
     def send_goto_relative(self, north, east, down):
+        self.state = "BUSY"
         self.get_logger().info("Sending goto relative action goal")
         goal_msg = GotoRelative.Goal()
         goal_msg.north = float(north)
@@ -119,8 +123,19 @@ class Mission(Node):
         while not self.goto_rel_action_client.wait_for_server():
             self.get_logger().info("waiting for goto server...")
 
-        self.goto_rel_action_client.send_goal_async(goal_msg)
+        send_goal_future = self.goto_rel_action_client.send_goal_async(goal_msg)
+        send_goal_future.add_done_callback(self.goto_rel_response_callback)
         self.get_logger().info("Goto action sent")
+
+    def goto_rel_response_callback(self, future):
+        self.get_logger().info("Goto rel response callback")
+        goal_handle = future.result()
+        get_result_future = goal_handle.get_result_async()
+        get_result_future.add_done_callback(self.goto_rel_result_callback)
+
+    def goto_rel_result_callback(self, future):
+        self.get_logger().info("Goto rel  action finished")
+        self.state = "OK"
 
     def photos_tour(self, length, width):
         # CHOOSE HOW MUCH TO OVERLAP PHOTOS HERE
@@ -201,19 +216,19 @@ class Mission(Node):
             return res
 
 
-# using haversine formula, dronekit's doesn't work in some cases
-def get_distance_global(aLocation1, aLocation2):
-    coord1 = (aLocation1.lat, aLocation1.lon)
-    coord2 = (aLocation2.lat, aLocation2.lon)
+    # using haversine formula, dronekit's doesn't work in some cases
+    def get_distance_global(self, aLocation1, aLocation2):
+        coord1 = (aLocation1.lat, aLocation1.lon)
+        coord2 = (aLocation2.lat, aLocation2.lon)
 
-    return hv.haversine(coord1, coord2)*1000 # because we want it in metres
+        return hv.haversine(coord1, coord2)*1000 # because we want it in metres
 
 
-# spits out the distance between two given points in local frame
-def get_distance_metres_ned(aLocation1, aLocation2):
-    dnorth = aLocation2.north - aLocation1.north
-    deast = aLocation2.east - aLocation1.east
-    return math.sqrt((dnorth*dnorth) + (deast*deast))
+    # spits out the distance between two given points in local frame
+    def get_distance_metres_ned(self, aLocation1, aLocation2):
+        dnorth = aLocation2.north - aLocation1.north
+        deast = aLocation2.east - aLocation1.east
+        return math.sqrt((dnorth*dnorth) + (deast*deast))
 
 def main(args=None):
     rclpy.init(args=args)
