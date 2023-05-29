@@ -7,7 +7,7 @@ from dronekit import connect, VehicleMode, LocationGlobal, LocationLocal, Locati
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
 from drone_interfaces.srv import DetectTrees, GetLocationRelative, GetAttitude, SetYaw
-from drone_interfaces.action import GotoRelative, GotoGlobal
+from drone_interfaces.action import GotoRelative, GotoGlobal, Shoot
 from std_msgs.msg import Int32MultiArray
 import time
 from rclpy.action import ActionClient
@@ -57,6 +57,7 @@ class Mission(Node):
             self.get_logger().info("attitude service not available, waiting again...")
         self.goto_rel_action_client = ActionClient(self, GotoRelative, "goto_relative")
         self.goto_glob_action_client = ActionClient(self, GotoGlobal, "goto_global")
+        self.shoot_action_client = ActionClient(self, Shoot, "shoot")
         self.yaw_cli = self.create_client(SetYaw, "set_yaw")
         while not self.yaw_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("set yaw service not available, waiting again...")
@@ -76,6 +77,7 @@ class Mission(Node):
         self.width = 0
         self.scan_altitude = 10
         self.shoot_altitude = 5
+        self.balls_dict = {"golden": "yellow", "beige": "orange"}
 
     def set_area_coords(self, coordru, coordrd, coordld, coordlu):
         self.coordlu = coordlu
@@ -103,24 +105,55 @@ class Mission(Node):
         # print(future.result().detections_list)
         return future.result().detections_list.detections_list
 
+    def send_shoot_goal(self, color):
+        self.get_logger().info(f"Sending shoot goal, color: {color}")
+        self.state = "BUSY"
+        goal_msg = Shoot.Goal()
+        goal_msg.color = color
+        self.send_goal_future = self.shoot_action_client.send_goal_async(goal_msg)
+        self.send_goal_future.add_done_callback(self.shoot_response_callback)
+        self.get_logger().info("Shoot action sent")       
+
+    def shoot_response_callback(self, future):
+        self.get_logger().info("Shoot response callback")
+        goal_handle = future.result()
+        self.get_result_future = goal_handle.get_result_async()
+        self.get_result_future.add_done_callback(self.shoot_result_callback)
+
+    def shoot_result_callback(self, future):
+        self.get_logger().info("Shoot action finished")
+        self.state = "OK"
+
     def goto_det_group(self, det_list):
         relative_move = [0, 0]
         for det in det_list:
-            self.get_logger().info("Going to next det")
-            # self.send_set_yaw(self.current_yaw)
-            # time.sleep(3)
-            gps_position = det.gps_position
-            self.send_goto_relative(
-                gps_position[0] - relative_move[0],
-                gps_position[1] - relative_move[1],
-                0.0,
+            if det.color_name != "brown":
+                self.get_logger().info("Going to next det")
+                # self.send_set_yaw(self.current_yaw)
+                # time.sleep(3)
+                gps_position = det.gps_position
+                self.send_goto_relative(
+                    gps_position[0] - relative_move[0],
+                    gps_position[1] - relative_move[1],
+                    0.0,
+                )
+                relative_move[0] += gps_position[0]
+                relative_move[1] += gps_position[1]
+                self.wait_busy()
+                time.sleep(2)
+                self.get_logger().info(f"Shooting {det.color_name} with {self.balls_dict[det.color_name]} ball")
+                self.send_shoot_goal(self.balls_dict[det.color_name])
+                self.wait_busy()
+            else:
+                self.get_logger().info("Brown detected, not moving")
+        # go back to area center
+        self.get_logger().info("Going back  to area center")
+        self.send_goto_relative(
+            -relative_move[0],
+            -relative_move[1],
+            0.0,
             )
-            relative_move[0] += gps_position[0]
-            relative_move[1] += gps_position[1]
-            while self.state == "BUSY":
-                # self.get_logger().info("Waiting for goto det")
-                # time.sleep(1)
-                rclpy.spin_once(self, timeout_sec=0.05)
+        self.wait_busy()
         return 1
 
     def get_gps(self):
@@ -137,7 +170,6 @@ class Mission(Node):
             self.get_logger().info("GPS Recieved")
         else:
             self.get_logger().info("GPS request failed")
-            se
             self.drone_amplitude = 0
         return [self.north, self.east, self.down]
 
@@ -216,8 +248,13 @@ class Mission(Node):
         delta = self.rotate_vector(cam_range_l, cam_range_w, self.current_yaw) #delta is camera's range's vector, it's then rotated to match the field
         self.get_logger().info(f"delta: {delta}")
         self.get_logger().info(f"delta 0: {delta[0,0]},  delta 1: {delta[1,0]}")
+
+
         self.send_goto_relative(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
-        
+        time.sleep(2)
+        gps = self.get_gps()
+        det_list = self.send_detection_request(gps=gps, yaw=self.current_yaw)
+        self.goto_det_group(det_list)
         k = 1
 
         # if length > width:
@@ -228,24 +265,30 @@ class Mission(Node):
             self.get_logger().info("Next w tour")
             for j in range(l_tours-1):
                 self.get_logger().info("Next l tour")
-                # self.set_yaw(current_yaw)
-                time.sleep(4)
                 self.send_goto_relative(k*-delta[1,0], 0, 0)
-                while self.state == "BUSY":
-                    # self.get_logger().info("Waiting for goto action")
-                    rclpy.spin_once(self, timeout_sec=0.05)
+                self.wait_busy()
+                time.sleep(2)
+                gps = self.get_gps()
+                det_list = self.send_detection_request(gps=gps, yaw=self.current_yaw)
+                self.goto_det_group(det_list)
             
                 
                 # taking a photo, detection and flying to the circles here
 
             if i < w_tours-1:
-                # self.set_yaw(current_yaw)
-                time.sleep(4)
+
                 self.send_goto_relative(0, -delta[0,0], 0)
-                while self.state == "BUSY":
-                    # self.get_logger().info("Waiting for goto action")
-                    rclpy.spin_once(self, timeout_sec=0.05)
+                self.wait_busy()
+                time.sleep(2)
+                gps = self.get_gps()
+                det_list = self.send_detection_request(gps=gps, yaw=self.current_yaw)
+                self.goto_det_group(det_list)
                 k = -k
+
+    def wait_busy(self):
+        while self.state == "BUSY":
+            rclpy.spin_once(self, timeout_sec=0.05)        
+
 
     def scan_area(self):
         self.get_logger().info("Scanning area")
@@ -342,6 +385,11 @@ def main(args=None):
     rclpy.init(args=args)
 
     mission = Mission()
+    # mission.send_shoot_goal("yellow")
+    # mission.wait_busy()
+    # time.sleep(5)
+    # mission.send_shoot_goal("orange")
+    # mission.wait_busy()
     mission.scan_area()
     mission.photos_tour()
     # for i in range(1):
