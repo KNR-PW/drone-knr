@@ -7,11 +7,12 @@ from dronekit import connect, VehicleMode, LocationGlobal, LocationLocal, Locati
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
 from drone_interfaces.srv import DetectTrees, GetLocationRelative, GetAttitude, SetYaw
-from drone_interfaces.action import GotoRelative
+from drone_interfaces.action import GotoRelative, GotoGlobal
 from std_msgs.msg import Int32MultiArray
 import time
 from rclpy.action import ActionClient
 import haversine as hv
+import math
 
 class Detection:
     def __init__(self, bounding_box=(0, 0, 0, 0), color="", gps_pos=(0, 0)):
@@ -55,17 +56,26 @@ class Mission(Node):
         while not self.atti_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("attitude service not available, waiting again...")
         self.goto_rel_action_client = ActionClient(self, GotoRelative, "goto_relative")
+        self.goto_glob_action_client = ActionClient(self, GotoGlobal, "goto_global")
         self.yaw_cli = self.create_client(SetYaw, "set_yaw")
         while not self.yaw_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("set yaw service not available, waiting again...")
         self.get_logger().info("GotoDetectionGroup node created")
         self.state = "OK"
         altit = 10
-        self.coordru = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
-        self.coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
-        self.coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
-        self.coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
+        self.coordrd = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
+        self.coordld = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
+        self.coordlu = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
+        self.coordru = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
+        self.local_coordru = 0
+        self.local_coordrd = 0
+        self.local_coordld = 0
+        self.local_coordlu = 0
         self.current_yaw = 0
+        self.length = 0 
+        self.width = 0
+        self.scan_altitude = 10
+        self.shoot_altitude = 5
 
     def set_area_coords(self, coordru, coordrd, coordld, coordlu):
         self.coordlu = coordlu
@@ -97,8 +107,8 @@ class Mission(Node):
         relative_move = [0, 0]
         for det in det_list:
             self.get_logger().info("Going to next det")
-            self.send_set_yaw(self.current_yaw)
-            time.sleep(3)
+            # self.send_set_yaw(self.current_yaw)
+            # time.sleep(3)
             gps_position = det.gps_position
             self.send_goto_relative(
                 gps_position[0] - relative_move[0],
@@ -163,79 +173,151 @@ class Mission(Node):
         self.get_logger().info("Goto rel  action finished")
         self.state = "OK"
 
-    def photos_tour(self, length, width):
+    def send_goto_global(self, lat, lon, alt):
+        self.state = "BUSY"
+        self.get_logger().info("Sending goto global action goal")
+        goal_msg = GotoGlobal.Goal()
+        goal_msg.lat = float(lat)
+        goal_msg.lon = float(lon)
+        goal_msg.alt = float(alt)
+        while not self.goto_rel_action_client.wait_for_server():
+            self.get_logger().info("waiting for goto server...")
+
+        self.send_goal_future = self.goto_glob_action_client.send_goal_async(goal_msg)
+        self.send_goal_future.add_done_callback(self.goto_glob_response_callback)
+        self.get_logger().info("Goto action sent")
+
+    def goto_glob_response_callback(self, future):
+        self.get_logger().info("Goto rel response callback")
+        goal_handle = future.result()
+        self.get_result_future = goal_handle.get_result_async()
+        self.get_result_future.add_done_callback(self.goto_glob_result_callback)
+
+    def goto_glob_result_callback(self, future):
+        self.get_logger().info("Goto rel  action finished")
+        self.state = "OK"
+
+    def photos_tour(self):
+        length = self.length
+        width = self.width
         # CHOOSE HOW MUCH TO OVERLAP PHOTOS HERE
-        cam_range_l = self.cam_range[0]-2 # two meters cut for better accuracy and overlapping
-        cam_range_w = self.cam_range[1]-2
+        HFOV=math.radians(62.2)
+        VFOV=math.radians(48.8)
+        cam_range=(math.tan(HFOV/2)*self.scan_altitude*2,math.tan(VFOV/2)*self.scan_altitude*2)
+        cam_range_l = cam_range[0]-4 # two meters cut for better accuracy and overlapping
+        cam_range_w = cam_range[1]-4
 
-        l_tours = round(length/cam_range_l)
-        w_tours = round(width/cam_range_w)
+        # add 0.5 to always round up
+        l_tours = round((self.length/cam_range_l)+0.5)
+        w_tours = round((self.width/cam_range_w)+0.5)
+        self.get_logger().info(f"cam_range_l {cam_range_l}, cam_range_w {cam_range_w}")
+        self.get_logger().info(f"l_tours {l_tours}, w_tours {w_tours}")
 
-        current_yaw = self.vehicle.attitude.yaw 
-
-        delta = cam_range_l, cam_range_w, current_yaw #delta is camera's range's vector, it's then rotated to match the field
-
-        self.goto_position_rel(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
+        delta = self.rotate_vector(cam_range_l, cam_range_w, self.current_yaw) #delta is camera's range's vector, it's then rotated to match the field
+        self.get_logger().info(f"delta: {delta}")
+        self.get_logger().info(f"delta 0: {delta[0,0]},  delta 1: {delta[1,0]}")
+        self.send_goto_relative(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
         
         k = 1
 
-        if length > width:
-            current_yaw = current_yaw + 3.141592/2
+        # if length > width:
+        #     current_yaw = current_yaw + 3.141592/2
+        #     print("dupa")
 
         for i in range(w_tours):
+            self.get_logger().info("Next w tour")
             for j in range(l_tours-1):
-                self.set_yaw(current_yaw)
+                self.get_logger().info("Next l tour")
+                # self.set_yaw(current_yaw)
                 time.sleep(4)
-                self.goto_position_rel(k*-delta[1,0], 0, 0)
+                self.send_goto_relative(k*-delta[1,0], 0, 0)
+                while self.state == "BUSY":
+                    # self.get_logger().info("Waiting for goto action")
+                    rclpy.spin_once(self, timeout_sec=0.05)
+            
                 
                 # taking a photo, detection and flying to the circles here
 
             if i < w_tours-1:
-                self.set_yaw(current_yaw)
+                # self.set_yaw(current_yaw)
                 time.sleep(4)
-                self.goto_position_rel(0, -delta[0,0], 0)
+                self.send_goto_relative(0, -delta[0,0], 0)
+                while self.state == "BUSY":
+                    # self.get_logger().info("Waiting for goto action")
+                    rclpy.spin_once(self, timeout_sec=0.05)
                 k = -k
 
-
-    def circles_calc(l_coordru, l_coordrd, l_coordld, l_coordlu):
-
-        length_d = get_distance_metres_ned(l_coordrd, l_coordld) # down and up
-        length_u = get_distance_metres_ned(l_coordru, l_coordlu)
+    def scan_area(self):
+        self.get_logger().info("Scanning area")
         
-        width_r = get_distance_metres_ned(l_coordrd, l_coordru) #right
-        width_l = get_distance_metres_ned(l_coordld, l_coordlu) #left
+        self.send_goto_global(lat=self.coordrd.lat, lon=self.coordrd.lon, alt=self.coordrd.alt)
+        while self.state == "BUSY":
+            rclpy.spin_once(self, timeout_sec=0.1)
+        self.local_coordrd = self.get_gps()
+        self.get_logger().info(f"Local coordinate recieved, ru:  {self.local_coordrd}")
 
-        length = (length_d+length_u)/2
-        width = (width_r+width_l)/2
+        self.send_goto_global(lat=self.coordld.lat, lon=self.coordld.lon, alt=self.coordld.alt)
+        while self.state == "BUSY":
+            rclpy.spin_once(self, timeout_sec=0.1)
 
-        print("length local: ", length)
-        print("width local: ", width)
-
-        n_length = (round(length/4))+1
-        print("number of circles from right to left: ", n_length)
-
-        n_width = (round(width/4))+1
-        print("number of circles from down to up: ", n_width)
-
-        n_circles = n_width*n_length
-
-        # circle number check
-        if n_circles != 100:
-            print("wrong number of circles, something's wrong")
-
-        return length, width, n_length, n_width
+        self.local_coordld = self.get_gps()
+        self.get_logger().info(f"Local coordinate recieved, ru:  {self.local_coordld}")
 
 
-    def rotate_vector(north, east, yaw):
+        self.send_goto_global(lat=self.coordlu.lat, lon=self.coordlu.lon, alt=self.coordlu.alt)
+        while self.state == "BUSY":
+            rclpy.spin_once(self, timeout_sec=0.1)
+        self.local_coordlu = self.get_gps()
+        self.get_logger().info(f"Local coordinate recieved, ru:  {self.local_coordlu}")
+    
+        
+        self.send_goto_global(lat=self.coordru.lat, lon=self.coordru.lon, alt=self.coordru.alt)
+        while self.state == "BUSY":
+            rclpy.spin_once(self, timeout_sec=0.1)
+        self.local_coordru = self.get_gps()
+        self.get_logger().info(f"Local coordinate recieved, ru:  {self.local_coordru}")
+        # SCAN IS ALWAYS FINISHED IN RU
+        
+        self.circles_calc()
+        self.current_yaw = self.get_yaw()
+
+
+        
+    def get_distance_metres_ned(self, aLocation1, aLocation2):
+        dnorth = aLocation2[0] - aLocation1[0]
+        deast = aLocation2[1] - aLocation1[1]
+        return math.sqrt((dnorth*dnorth) + (deast*deast))
+        
+       
+    def circles_calc(self):
+        l_coordrd = self.local_coordrd
+        l_coordru = self.local_coordru
+        l_coordld = self.local_coordld
+        l_coordlu = self.local_coordlu
+
+        length_d = self.get_distance_metres_ned(l_coordrd, l_coordld) # down and up
+        length_u = self.get_distance_metres_ned(l_coordru, l_coordlu)
+        
+        width_r = self.get_distance_metres_ned(l_coordrd, l_coordru) #right
+        width_l = self.get_distance_metres_ned(l_coordld, l_coordlu) #left
+
+        # Change with and length for nore logical sense
+        self.width = (length_d+length_u)/2
+        self.length = (width_r+width_l)/2
+
+        print("length local: ", self.length)
+        print("width local: ", self.width)
+
+    def rotate_vector(self, north, east, yaw):
             yaw = -yaw # because yaw is clockwise in dronekit
             r = np.matrix([[east],
                         [north]])
             
-            rotated = np.matmul(Rot(yaw),r)
+            rotated = np.matmul(self.Rot(yaw),r)
             return rotated
 
 
-    def Rot(yaw):
+    def Rot(self, yaw):
             yaw = math.radians(yaw)
             res = np.matrix([[math.cos(yaw), -math.sin(yaw)], 
                             [math.sin(yaw), math.cos(yaw)]])
@@ -251,21 +333,22 @@ class Mission(Node):
 
 
     # spits out the distance between two given points in local frame
-    def get_distance_metres_ned(self, aLocation1, aLocation2):
-        dnorth = aLocation2.north - aLocation1.north
-        deast = aLocation2.east - aLocation1.east
-        return math.sqrt((dnorth*dnorth) + (deast*deast))
+    # def get_distance_metres_ned(self, aLocation1, aLocation2):
+    #     dnorth = aLocation2.north - aLocation1.north
+    #     deast = aLocation2.east - aLocation1.east
+    #     return math.sqrt((dnorth*dnorth) + (deast*deast))
 
 def main(args=None):
     rclpy.init(args=args)
 
     mission = Mission()
-
-    for i in range(1):
-        gps = mission.get_gps()
-        yaw = mission.get_yaw()
-        det_list = mission.send_detection_request(gps=gps, yaw=yaw)
-        print(mission.goto_det_group(det_list))
+    mission.scan_area()
+    mission.photos_tour()
+    # for i in range(1):
+    #     gps = mission.get_gps()
+    #     yaw = mission.get_yaw()
+    #     det_list = mission.send_detection_request(gps=gps, yaw=yaw)
+    #     print(mission.goto_det_group(det_list))
     mission.destroy_node()
 
     rclpy.shutdown()
