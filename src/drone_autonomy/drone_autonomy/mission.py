@@ -3,7 +3,7 @@ from rclpy.node import Node  # Handles the creation of nodes
 from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Images
 import cv2  # OpenCV library
 import numpy as np
-
+from dronekit import connect, VehicleMode, LocationGlobal, LocationLocal, LocationGlobalRelative, APIException
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
 from drone_interfaces.srv import DetectTrees, GetLocationRelative, GetAttitude
@@ -57,6 +57,17 @@ class Mission(Node):
         self.goto_rel_action_client = ActionClient(self, GotoRelative, "goto_relative")
         self.get_logger().info("GotoDetectionGroup node created")
         self.state = "OK"
+        self.coordru = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
+        self.coordrd = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
+        self.coordld = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
+        self.coordlu = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
+
+    def set_area_coords(self, coordru, coordrd, coordld, coordlu):
+        self.coordlu = coordlu
+        self.coordrd = coordrd
+        self.coordld = coordld
+        self.coordru = coordru
+        self.get_logger().info("Area coordinates set")
 
     def send_detection_request(self, info=0, gps=[0.0, 0.0, 0.0], yaw=0.0):
         gps = [float(x) for x in gps]
@@ -149,7 +160,7 @@ class Mission(Node):
 
         current_yaw = self.vehicle.attitude.yaw 
 
-        delta = rotate_vector(cam_range_l, cam_range_w, current_yaw) #delta is camera's range's vector, it's then rotated to match the field
+        delta = cam_range_l, cam_range_w, current_yaw #delta is camera's range's vector, it's then rotated to match the field
 
         self.goto_position_rel(-delta[1,0]/2, -delta[0,0]/2, 0) # move from the edge of map, delta(1) is y, so north
         
