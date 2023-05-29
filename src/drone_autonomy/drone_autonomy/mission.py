@@ -84,8 +84,10 @@ class Mission(Node):
             relative_move[0] += gps_position[0]
             relative_move[1] += gps_position[1]
             while self.state == "BUSY":
-                self.get_logger().info("Waiting for goto det")
-                time.sleep(1)
+                # self.get_logger().info("Waiting for goto det")
+                # time.sleep(1)
+                rclpy.spin_once(self, timeout_sec=0.05)
+        return 1
 
     def get_gps(self):
         self.get_logger().info("Sending GPS request")
@@ -123,15 +125,15 @@ class Mission(Node):
         while not self.goto_rel_action_client.wait_for_server():
             self.get_logger().info("waiting for goto server...")
 
-        send_goal_future = self.goto_rel_action_client.send_goal_async(goal_msg)
-        send_goal_future.add_done_callback(self.goto_rel_response_callback)
+        self.send_goal_future = self.goto_rel_action_client.send_goal_async(goal_msg)
+        self.send_goal_future.add_done_callback(self.goto_rel_response_callback)
         self.get_logger().info("Goto action sent")
 
     def goto_rel_response_callback(self, future):
         self.get_logger().info("Goto rel response callback")
         goal_handle = future.result()
-        get_result_future = goal_handle.get_result_async()
-        get_result_future.add_done_callback(self.goto_rel_result_callback)
+        self.get_result_future = goal_handle.get_result_async()
+        self.get_result_future.add_done_callback(self.goto_rel_result_callback)
 
     def goto_rel_result_callback(self, future):
         self.get_logger().info("Goto rel  action finished")
@@ -239,7 +241,7 @@ def main(args=None):
         gps = mission.get_gps()
         yaw = mission.get_yaw()
         det_list = mission.send_detection_request(gps=gps, yaw=yaw)
-        mission.goto_det_group(det_list)
+        print(mission.goto_det_group(det_list))
     mission.destroy_node()
 
     rclpy.shutdown()
