@@ -10,7 +10,7 @@ from rclpy.node import Node
 from rclpy.action import ActionServer
 
 from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw, SetMode
-from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff
+from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff, Shoot
 
 import haversine as hv
 class DroneHandler(Node):
@@ -29,6 +29,7 @@ class DroneHandler(Node):
         self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
         self.arm = ActionServer(self,Arm, 'Arm',self.arm_callback)
         self.takeoff = ActionServer(self, Takeoff, 'takeoff',self.takeoff_callback)
+        self.shoot = ActionServer(self, Shoot, 'shoot', self.shoot_callback)
 
         ## DRONE MEMBER VARIABLES
         self.state = "BUSY"
@@ -57,6 +58,35 @@ class DroneHandler(Node):
     def __del__(self):
         self.vehicle.mode=VehicleMode("RTL")
 
+    def shoot_callback(self, goal_handle):
+        stop = 1000
+        shoot = 1200
+        load =1500
+
+        left = 2000
+        mid = 1400
+        right = 800
+
+        self.set_servo(10,stop)
+        self.set_servo(11,stop)
+        time.sleep(1)
+        self.set_servo(9,left if goal_handle.request.color == 'yellow' else right)
+        self.set_servo(10,load)
+        self.set_servo(11,load)
+        time.sleep(2)
+        self.set_servo(10,shoot)
+        self.set_servo(11,shoot)
+        self.set_servo(9,mid - 300 if goal_handle.request.color == 'yellow' else mid+300)
+        time.sleep(1)
+        self.set_servo(10,stop)
+        self.set_servo(11,stop)
+        self.set_servo(9,mid)
+
+        self.get_logger().info("Shoot action completed:" + goal_handle.request.side)
+        goal_handle.succeed()
+        result = Shoot.Result()
+        return result
+        
     ## INTERNAL HELPER METHODS
     def goto_position_target_local_ned(self, north, east, down=-1):
         if down == -1:
