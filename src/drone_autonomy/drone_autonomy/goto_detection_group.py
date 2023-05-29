@@ -3,6 +3,7 @@ from rclpy.node import Node  # Handles the creation of nodes
 from cv_bridge import CvBridge  # Package to convert between ROS and OpenCV Images
 import cv2  # OpenCV library
 import numpy as np
+
 # from detection import Detection
 from drone_interfaces.msg import DetectionMsg, DetectionsList
 from drone_interfaces.srv import DetectTrees, GetLocationRelative, GetAttitude
@@ -10,7 +11,6 @@ from drone_interfaces.action import GotoRelative
 from std_msgs.msg import Int32MultiArray
 import time
 from rclpy.action import ActionClient
-
 
 
 class Detection:
@@ -40,32 +40,33 @@ class Detection:
 
 
 class GotoDetectionGroup(Node):
-
     def __init__(self):
-        super().__init__('goto_detection_group')
-        self.det_cli = self.create_client(DetectTrees, 'detect_trees')
+        super().__init__("goto_detection_group")
+        self.det_cli = self.create_client(DetectTrees, "detect_trees")
         while not self.det_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('detect_trees service not available, waiting again...')
+            self.get_logger().info(
+                "detect_trees service not available, waiting again..."
+            )
         self.req = DetectTrees.Request()
-        self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
+        self.gps_cli = self.create_client(GetLocationRelative, "get_location_relative")
         while not self.gps_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('GPS service not available, waiting again...')
-        self.atti_cli = self.create_client(GetAttitude, 'get_attitude')
+            self.get_logger().info("GPS service not available, waiting again...")
+        self.atti_cli = self.create_client(GetAttitude, "get_attitude")
         while not self.atti_cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('attitude service not available, waiting again...')
-        self.goto_rel_action_client = ActionClient(self, GotoRelative, 'goto_relative')
-        self.get_logger().info('GotoDetectionGroup node created')
+            self.get_logger().info("attitude service not available, waiting again...")
+        self.goto_rel_action_client = ActionClient(self, GotoRelative, "goto_relative")
+        self.get_logger().info("GotoDetectionGroup node created")
 
-    def send_detection_request(self, info=0, gps=[0.0,0.0,0.0], yaw=0.0):
+    def send_detection_request(self, info=0, gps=[0.0, 0.0, 0.0], yaw=0.0):
         gps = [float(x) for x in gps]
-        self.get_logger().info('Sending detection request')
+        self.get_logger().info("Sending detection request")
         self.req.request_info = info
         self.req.gps = gps
         self.req.yaw = float(yaw)
         future = self.det_cli.call_async(self.req)
         print("called")
         rclpy.spin_until_future_complete(self, future, timeout_sec=10)
-        self.get_logger().info('Client recieved detection response')
+        self.get_logger().info("Client recieved detection response")
         # print(future.result().detections_list)
         return future.result().detections_list.detections_list
 
@@ -74,13 +75,17 @@ class GotoDetectionGroup(Node):
         for det in det_list:
             self.get_logger().info("Going to next det")
             gps_position = det.gps_position
-            self.send_goto_relative(gps_position[0]-relative_move[0], gps_position[1]-relative_move[1], 0.0)
+            self.send_goto_relative(
+                gps_position[0] - relative_move[0],
+                gps_position[1] - relative_move[1],
+                0.0,
+            )
             relative_move[0] += gps_position[0]
             relative_move[1] += gps_position[1]
             time.sleep(15)
 
     def get_gps(self):
-        self.get_logger().info('Sending GPS request')
+        self.get_logger().info("Sending GPS request")
         request_gps = GetLocationRelative.Request()
         gps_future = self.gps_cli.call_async(request_gps)
         # gps_future.add_done_callback(self.gps_get_result)
@@ -90,14 +95,15 @@ class GotoDetectionGroup(Node):
             self.east = gps_future.result().east
             self.down = gps_future.result().down
             self.drone_amplitude = -self.down
-            self.get_logger().info('GPS Recieved')
+            self.get_logger().info("GPS Recieved")
         else:
-            self.get_logger().info('GPS request failed')
+            self.get_logger().info("GPS request failed")
+            se
             self.drone_amplitude = 0
         return [self.north, self.east, self.down]
 
     def get_yaw(self):
-        self.get_logger().info('Sending yaw request')
+        self.get_logger().info("Sending yaw request")
         request_attitude = GetAttitude.Request()
         atti_future = self.atti_cli.call_async(request_attitude)
         rclpy.spin_until_future_complete(self, atti_future, timeout_sec=5)
@@ -111,10 +117,11 @@ class GotoDetectionGroup(Node):
         goal_msg.east = float(east)
         goal_msg.down = float(down)
         while not self.goto_rel_action_client.wait_for_server():
-            self.get_logger().info('waiting for goto server...')
+            self.get_logger().info("waiting for goto server...")
 
         self.goto_rel_action_client.send_goal_async(goal_msg)
         self.get_logger().info("Goto action sent")
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -135,5 +142,5 @@ def main(args=None):
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
