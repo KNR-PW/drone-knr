@@ -102,16 +102,17 @@ class DetectorServer(Node):
         return response
 
     def detect_trees_callback(self, request, response):
+        
         self.get_logger().info('Incoming detection request')
         self.drone_amplitude= -request.gps[2]
         self.yaw = request.yaw
         # self.read_frame()
         # self.update_position()
- 
-        self.detection(self.frame)
-        self.detections_to_msg()
-        response.detections_list = self.detections_list_msg
-        self.get_logger().info('Response generated. Found trees: ' + str(len(self.detections)))
+        if self.frame is not None:
+            self.detection(self.frame)
+            self.detections_to_msg()
+            response.detections_list = self.detections_list_msg
+            self.get_logger().info('Response generated. Found trees: ' + str(len(self.detections)))
 
         return response
 

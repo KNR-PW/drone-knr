@@ -64,7 +64,7 @@ class Mission(Node):
         self.mode_cli = self.create_client(SetMode, 'set_mode')
         while not self.yaw_cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("set yaw service not available, waiting again...")
-        self.get_logger().info("GotoDetectionGroup node created")
+        self.get_logger().info("Mission node created")
         self.state = "OK"
         altit = 10
         self.coordrd = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
@@ -79,7 +79,7 @@ class Mission(Node):
         self.length = 0 
         self.width = 0
         self.scan_altitude = float(10)
-        self.shoot_altitude = 5
+        self.shoot_altitude = 5.0
         self.balls_dict = {"golden": "yellow", "beige": "orange"}
         self.circles_counter = 0
         self.last_move = [0, 0]
@@ -109,7 +109,11 @@ class Mission(Node):
         rclpy.spin_until_future_complete(self, future, timeout_sec=10)
         self.get_logger().info("Client recieved detection response")
         # print(future.result().detections_list)
-        return future.result().detections_list.detections_list
+        try:
+            return future.result().detections_list.detections_list
+        except Exception as e:
+            self.get_logger().info(f"error in returning det: {str(e)}")
+            return []
 
     def send_shoot_goal(self, color):
         self.get_logger().info(f"Sending shoot goal, color: {color}")
@@ -130,12 +134,29 @@ class Mission(Node):
         self.get_logger().info("Shoot action finished")
         self.state = "OK"
 
+    def change_altitude(self, relative_altitude=0):
+        self.send_goto_relative(
+                    0.0,
+                    0.0,
+                    float(relative_altitude),
+                )
+        self.wait_busy()
     def goto_det_group(self, det_list):
         relative_move = [0, 0]
         self.last_move = [0, 0]
+        is_alt_changed = False
+        rel_altitude = 0
+        
         for det in det_list:
             self.circles_counter += 1
             if det.color_name != "brown":
+                if not is_alt_changed:
+                    # self.get_logger().info("Going to shoot altitude")
+                    # self.change_altitude(self.shoot_altitude)
+                    rel_altitude = self.shoot_altitude
+                    is_alt_changed = True
+                else:
+                    rel_altitude = 0.0
                 self.get_logger().info("Going to next det")
                 # self.send_set_yaw(self.current_yaw)
                 # time.sleep(3)
@@ -143,12 +164,13 @@ class Mission(Node):
                 self.send_goto_relative(
                     gps_position[0] - relative_move[0],
                     gps_position[1] - relative_move[1],
-                    0.0,
+                    rel_altitude,
                 )
                 relative_move[0] += gps_position[0]
                 relative_move[1] += gps_position[1]
                 self.wait_busy()
-                time.sleep(2)
+                time.sleep(3)
+                self.correct_position()
                 self.get_logger().info(f"Shooting {det.color_name} with {self.balls_dict[det.color_name]} ball")
                 self.send_shoot_goal(self.balls_dict[det.color_name])
                 self.wait_busy()
@@ -156,6 +178,9 @@ class Mission(Node):
                 self.last_move[1] = gps_position[1]
             else:
                 self.get_logger().info("Brown detected, not moving")
+        if is_alt_changed:
+            self.get_logger().info("Going to scan altitude")
+            self.change_altitude(-self.shoot_altitude)
         # go back to area center
         # self.get_logger().info("Going back  to area center")
         # self.send_goto_relative(
@@ -300,6 +325,28 @@ class Mission(Node):
         self.get_logger().info(f"Detections not used: {i}")
         self.goto_det_group(det_list_filtered) 
 
+    def correct_position(self):
+        gps = self.get_gps()
+        det_list = self.send_detection_request(gps=gps, yaw=self.current_yaw)
+        current_det_list = []
+        current_det = None
+        for det in det_list:
+            self.get_logger().info(f"Position diff (correction): {[det.gps_position[0], det.gps_position[1]]}")
+            if (abs(det.gps_position[0]) < 3  and abs(det.gps_position[1]) < 3) and (abs(det.gps_position[1]) > 0.1 or abs(det.gps_position[0]) > 0.1):
+                current_det_list.append(det)
+        current_det = min(current_det_list, key=self.det_distance)
+        print(f"current_det: {current_det}")
+        if current_det is not None:
+            self.get_logger().info(f"Correcting position: {[current_det.gps_position[0], current_det.gps_position[1]]}")
+            self.send_goto_relative(current_det.gps_position[0], current_det.gps_position[1], 0.0)
+            self.wait_busy()
+            time.sleep(2)
+        else:
+            self.get_logger().info(f"No detection to correct found")
+
+    def det_distance(self, det):
+        # calculate det distance from drone middle
+        return math.sqrt(det.gps_position[0]**2 + det.gps_position[1]**2)
     def is_det_used(self, det, gps):
         det_gps = [0,0]
         det_gps[0] = det.gps_position[0] + gps[0]

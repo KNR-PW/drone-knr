@@ -35,12 +35,12 @@ class DroneHandler(Node):
         self.state = "BUSY"
 
         ##CONNECT TO COPTER
-        parser = argparse.ArgumentParser(description='commands')
-        parser.add_argument('--connect', default='127.0.0.1:14550')
-        args = parser.parse_args()
+        # parser = argparse.ArgumentParser(description='commands')
+        # parser.add_argument('--connect', default='127.0.0.1:14550')
+        # args = parser.parse_args()
 
-        connection_string = args.connect
-        # connection_string = None
+        # connection_string = args.connect
+        connection_string = '127.0.0.1:14550'
 
         sitl = None
 
@@ -110,7 +110,7 @@ class DroneHandler(Node):
             mask = 0b1111011111111000
         else:
         # face move direction
-            mask = 0b1111111111111000
+            mask = 0b0000111111111000
             
         msg = self.vehicle.message_factory.set_position_target_global_int_encode(
         0,       # time_boot_ms (not used)
