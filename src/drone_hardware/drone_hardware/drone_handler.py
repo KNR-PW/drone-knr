@@ -326,7 +326,7 @@ class DroneHandler(Node):
 
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
         #  after Vehicle.simple_takeoff will execute immediately).
-        while self.vehicle.location.global_relative_frame.alt >= goal_handle.request.altitude * 0.97:
+        while self.vehicle.location.global_relative_frame.alt <= goal_handle.request.altitude * 0.80:
             feedback_msg.altitude = self.vehicle.location.global_relative_frame.alt
             self.get_logger().info(f"Altitude: {feedback_msg.altitude}")
             time.sleep(1)
