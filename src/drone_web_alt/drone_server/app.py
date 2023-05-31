@@ -5,7 +5,13 @@ import sqlite3
 import json
 from flask_cors import CORS
 
-app = Flask(__name__)
+
+
+UPLOAD_FOLDER = 'testupload'
+
+app = Flask(__name__,
+    static_url_path='/upload',
+    static_folder=UPLOAD_FOLDER)
 CORS(app)
 
 # db shit: https://flask.palletsprojects.com/en/2.3.x/patterns/sqlite3/
@@ -33,7 +39,6 @@ def init_db():
         db.commit()
 
 
-UPLOAD_FOLDER = 'testupload'
 ALLOWED_EXTENSIONS = { 'png', 'jpg', 'jpeg' }
 
 
