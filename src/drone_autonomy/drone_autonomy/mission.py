@@ -78,7 +78,7 @@ class Mission(Node):
         self.current_yaw = 0
         self.length = 0 
         self.width = 0
-        self.scan_altitude = float(10)
+        self.scan_altitude = float(5)
         self.shoot_altitude = 5.0
         self.balls_dict = {"golden": "yellow", "beige": "orange"}
         self.circles_counter = 0
@@ -145,18 +145,18 @@ class Mission(Node):
         relative_move = [0, 0]
         self.last_move = [0, 0]
         is_alt_changed = False
-        rel_altitude = 0
+        rel_altitude = 0.0
         
         for det in det_list:
             self.circles_counter += 1
             if det.color_name != "brown":
-                if not is_alt_changed:
-                    # self.get_logger().info("Going to shoot altitude")
-                    # self.change_altitude(self.shoot_altitude)
-                    rel_altitude = self.shoot_altitude
-                    is_alt_changed = True
-                else:
-                    rel_altitude = 0.0
+                # if not is_alt_changed:
+                #     # self.get_logger().info("Going to shoot altitude")
+                #     # self.change_altitude(self.shoot_altitude)
+                #     rel_altitude = self.shoot_altitude
+                #     is_alt_changed = True
+                # else:
+                #     rel_altitude = 0.0
                 self.get_logger().info("Going to next det")
                 # self.send_set_yaw(self.current_yaw)
                 # time.sleep(3)
@@ -178,17 +178,9 @@ class Mission(Node):
                 self.last_move[1] = gps_position[1]
             else:
                 self.get_logger().info("Brown detected, not moving")
-        if is_alt_changed:
-            self.get_logger().info("Going to scan altitude")
-            self.change_altitude(-self.shoot_altitude)
-        # go back to area center
-        # self.get_logger().info("Going back  to area center")
-        # self.send_goto_relative(
-        #     -last_move[0],
-        #     -last_move[1],
-        #     0.0,
-        #     )
-        # self.wait_busy()
+        # if is_alt_changed:
+        #     self.get_logger().info("Going to scan altitude")
+        #     self.change_altitude(-self.shoot_altitude)
         return 1
 
     def get_gps(self):
@@ -271,8 +263,8 @@ class Mission(Node):
         HFOV=math.radians(62.2)
         VFOV=math.radians(48.8)
         cam_range=(math.tan(HFOV/2)*self.scan_altitude*2,math.tan(VFOV/2)*self.scan_altitude*2)
-        cam_range_l = cam_range[0]-4 # two meters cut for better accuracy and overlapping
-        cam_range_w = cam_range[1]-4
+        cam_range_l = cam_range[0]-1 # two meters cut for better accuracy and overlapping
+        cam_range_w = cam_range[1]-1
 
         # add 0.5 to always round up
         l_tours = round((self.length/cam_range_l)+0.5)
@@ -334,7 +326,8 @@ class Mission(Node):
             self.get_logger().info(f"Position diff (correction): {[det.gps_position[0], det.gps_position[1]]}")
             if (abs(det.gps_position[0]) < 3  and abs(det.gps_position[1]) < 3) and (abs(det.gps_position[1]) > 0.1 or abs(det.gps_position[0]) > 0.1):
                 current_det_list.append(det)
-        current_det = min(current_det_list, key=self.det_distance)
+        if current_det_list:
+            current_det = min(current_det_list, key=self.det_distance)
         print(f"current_det: {current_det}")
         if current_det is not None:
             self.get_logger().info(f"Correcting position: {[current_det.gps_position[0], current_det.gps_position[1]]}")
@@ -386,7 +379,7 @@ class Mission(Node):
         self.get_logger().info(f"Local coordinate recieved, ru:  {self.local_coordlu}")
     
         
-        self.send_goto_global(lat=self.coordru.lat, lon=self.coordru.lon, alt=self.coordru.alt)
+        self.send_goto_global(lat=self.coordru.lat, lon=self.coordru.lon, alt=self.scan_altitude)
         while self.state == "BUSY":
             rclpy.spin_once(self, timeout_sec=0.1)
         self.local_coordru = self.get_gps()
@@ -491,30 +484,26 @@ class Mission(Node):
 
         return hv.haversine(coord1, coord2)*1000 # because we want it in metres
 
+    def rtl_and_land(self):
+        gps = self.get_gps()
+        self.send_goto_relative(-gps[0], -gps[1], 0)
+        self.wait_busy()
+        request = SetMode.Request()
+        request.mode = "LAND"
+        mode_future = self.mode_cli.call_async(request)
+        rclpy.spin_until_future_complete(self, mode_future, timeout_sec=10)
+        self.get_logger().info("Mode LAND request sucesfull")      
 
-    # spits out the distance between two given points in local frame
-    # def get_distance_metres_ned(self, aLocation1, aLocation2):
-    #     dnorth = aLocation2.north - aLocation1.north
-    #     deast = aLocation2.east - aLocation1.east
-    #     return math.sqrt((dnorth*dnorth) + (deast*deast))
 
 def main(args=None):
     rclpy.init(args=args)
     start = time.time()
     mission = Mission()
     mission.arm_and_takeoff()
-    # mission.send_shoot_goal("yellow")
-    # mission.wait_busy()
-    # time.sleep(5)
-    # mission.send_shoot_goal("orange")
-    # mission.wait_busy()
     mission.scan_area()
     mission.photos_tour()
-    # for i in range(1):
-    #     gps = mission.get_gps()
-    #     yaw = mission.get_yaw()
-    #     det_list = mission.send_detection_request(gps=gps, yaw=yaw)
-    #     print(mission.goto_det_group(det_list))
+    mission.rtl_and_land()
+
     end = time.time()
     mission.get_logger().info(f"Time taken (min): {(end-start)/60}")
     mission.destroy_node()

@@ -49,6 +49,7 @@ class ImageSubscriber(Node):
         # convert frame in simulation
         current_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2RGB)
         # Display image
+        cv2.rectangle(current_frame, (int(current_frame.shape[0]/2), int(current_frame.shape[1]/2)), (int(current_frame.shape[0]/2)+20, int(current_frame.shape[1]/2)+20), (0,0,255), 3)
         cv2.imshow("camera", current_frame)
 
         cv2.waitKey(1)
