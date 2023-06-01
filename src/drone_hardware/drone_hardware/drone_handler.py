@@ -69,7 +69,7 @@ class DroneHandler(Node):
         self.set_servo(11,stop)
         self.set_servo(9,mid)
 
-        self.get_logger().info("Shoot action completed:" + goal_handle.request.side)
+        self.get_logger().info("Shoot action completed:" + goal_handle.request.color)
         goal_handle.succeed()
         result = Shoot.Result()
         return result
