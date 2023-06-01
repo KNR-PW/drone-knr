@@ -306,7 +306,6 @@ class DetectorServer(Node):
             self.get_logger().info('Waiting for camera video cpture to open...')
         _, self.frame = self.video_capture.read()
         self.frames_pub = self.create_publisher(Image, "/camera", 10)
-        self.timer = self.create_timer(0.5, self.timer_callback)
         self.get_logger().info('DetectorServer node created')
 
     # def timer_callback(self):
