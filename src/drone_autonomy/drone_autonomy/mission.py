@@ -503,14 +503,14 @@ def main(args=None):
     rclpy.init(args=args)
     # start = time.time()
     mission = Mission()
-    # mission.arm_and_takeoff()
+    mission.arm_and_takeoff()
     mission.scan_area()
     mission.photos_tour()
     mission.rtl_and_land()
 
 
-    end = time.time()
-    mission.get_logger().info(f"Time taken (min): {(end-start)/60}")
+    # end = time.time()
+    # mission.get_logger().info(f"Time taken (min): {(end-start)/60}")
     mission.destroy_node()
 
     rclpy.shutdown()
