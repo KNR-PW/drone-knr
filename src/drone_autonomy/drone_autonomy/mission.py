@@ -315,8 +315,9 @@ class Mission(Node):
         for det in det_list:
             if not self.is_det_used(det, gps):
                 i += 1
-                det_list_filtered.append(det)
-                self.used_detections.append([det.gps_position[0]+gps[0], det.gps_position[1]+gps[1]])
+                if i < 3:
+                    det_list_filtered.append(det)
+                    self.used_detections.append([det.gps_position[0]+gps[0], det.gps_position[1]+gps[1]])
         self.get_logger().info(f"Detections not used: {i}")
         self.goto_det_group(det_list_filtered) 
 
