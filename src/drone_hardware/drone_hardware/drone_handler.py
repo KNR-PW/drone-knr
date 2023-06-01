@@ -184,6 +184,22 @@ class DroneHandler(Node):
         coord2 = (aLocation2.lat, aLocation2.lon)
 
         return hv.haversine(coord1, coord2)*1000 # because we want it in metres
+    
+    
+    def transform_vector_global_to_rel(self, aLocation1, aLocation2):
+        coord1x= (aLocation1.lat, aLocation1.lon)
+        coord2x= (aLocation1.lat, aLocation2.lon)
+
+        coord1y= (aLocation1.lat, aLocation2.lon)
+        coord2y= (aLocation2.lat, aLocation2.lon)
+
+        delta_east = hv.haversine(coord1x, coord2x)
+        delta_north = hv.haversine(coord1y, coord2y)
+
+        vector = [delta_north, delta_east]
+        return vector
+
+    
     ## SERVICE CALLBACKS
     def get_attitude_callback(self, request, response):
         temp = self.vehicle.attitude
