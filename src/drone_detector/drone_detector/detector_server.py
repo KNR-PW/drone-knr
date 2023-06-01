@@ -287,9 +287,9 @@ class DetectorServer(Node):
         self.detections_srv = self.create_service(DetectTrees, 'detect_trees', self.detect_trees_callback)
         self.photo_svr = self.create_service(TakePhoto, 'take_photo', self.take_photo_callback)
         self.br = CvBridge()
-        self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
-                           "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
-                           "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
+        self.thresholds = {"brown": (np.array([0, 0, 0]), np.array([0, 0, 0])),
+                           "beige": (np.array([199, 173, 145]), np.array([255, 255, 255])),
+                           "golden": (np.array([218, 168, 215]), np.array([233, 211, 234]))}
         self.detections = []
         self.img_size = (1920, 1080)
         self.pub_img_size = (640, 480)
