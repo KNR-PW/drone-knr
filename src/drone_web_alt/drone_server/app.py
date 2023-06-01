@@ -4,15 +4,22 @@ import os
 import sqlite3
 import json
 from flask_cors import CORS
-
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 UPLOAD_FOLDER = 'testupload'
 
+# tell flask it's behind a proxy https://flask.palletsprojects.com/en/2.3.x/deploying/proxy_fix/
 app = Flask(__name__,
     static_url_path='/upload',
     static_folder=UPLOAD_FOLDER)
 CORS(app)
+
+
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
+
 
 # db shit: https://flask.palletsprojects.com/en/2.3.x/patterns/sqlite3/
 

@@ -14,6 +14,6 @@ payload = {
 }
 files = { 'photo': open('test.png', 'rb') }
 
-r = requests.post('http://localhost:5000', data=payload, files=files)
+r = requests.post('http://drone.bimbur.art/api', data=payload, files=files)
 
 print(r.text)

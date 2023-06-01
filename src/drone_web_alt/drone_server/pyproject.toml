@@ -1,0 +1,20 @@
+[build-system]
+requires = ['hatchling']
+build-backend = 'hatchling.build'
+
+
+[project]
+name = "drone-server-nigguh"
+version = "0.0.1"
+dependencies = [ "flask", "flask_cors" ]
+# authors = [
+#   { name="Example Author", email="author@example.com" },
+# ]
+# description = "A small example package"
+# readme = "README.md"
+# requires-python = ">=3.7"
+# classifiers = [
+#     "Programming Language :: Python :: 3",
+#     "License :: OSI Approved :: MIT License",
+#     "Operating System :: OS Independent",
+# ]
