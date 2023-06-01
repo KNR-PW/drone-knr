@@ -133,7 +133,7 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def set_servo(servo_id, pwm):
+    def set_servo(self, servo_id, pwm):
         msg = vehicle.message_factory.command_long_encode(
             0,          # time_boot_ms (not used)
             0,   # target system, target component
