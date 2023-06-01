@@ -79,8 +79,8 @@ class Mission(Node):
         self.current_yaw = 0
         self.length = 0 
         self.width = 0
-        self.scan_altitude = float(10)
-        self.shoot_altitude = 5.0
+        self.scan_altitude = float(20)
+        self.shoot_altitude = 10.0
         self.balls_dict = {"golden": "yellow", "beige": "orange"}
         self.circles_counter = 0
         self.last_move = [0, 0]
