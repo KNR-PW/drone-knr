@@ -172,9 +172,9 @@ class DroneHandler(Node):
     ## SERVICE CALLBACKS
     def get_attitude_callback(self, request, response):
         temp = self.vehicle.attitude
-        response.roll=temp.roll
-        response.pitch=temp.pitch
-        response.yaw=temp.yaw
+        response.roll=float(temp.roll)
+        response.pitch=float(temp.pitch)
+        response.yaw=float(temp.yaw)
         self.get_logger().info(f"-- Get attitude service called --")
         self.get_logger().info(f"Roll: {response.roll}")
         self.get_logger().info(f"Pitch: {response.pitch}")
