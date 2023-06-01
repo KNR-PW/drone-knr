@@ -5,7 +5,7 @@ from pymavlink import mavutil
 import argparse
 import time
 import math
-
+import haversine as hv
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
@@ -23,8 +23,6 @@ class DroneHandler(Node):
         self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
         self.mode = self.create_service(SetMode, 'set_mode',self.set_mode_callback)
         self.shoot = ActionServer(self, Shoot, 'shoot', self.shoot_callback)
-
-        
         ## DECLARE ACTIONS
         self.goto_rel = ActionServer(self, GotoRelative, 'goto_relative', self.goto_relative_action)
         self.goto_global = ActionServer(self, GotoGlobal, 'goto_global', self.goto_global_action)
@@ -35,21 +33,11 @@ class DroneHandler(Node):
         self.state = "BUSY"
 
         ##CONNECT TO COPTER
-        parser = argparse.ArgumentParser(description='commands')
-        parser.add_argument('--connect', default='127.0.0.1:14550')
-        args = parser.parse_args()
 
-        connection_string = args.connect
 
-        sitl = None
-
-        if not connection_string:
-            self.get_logger().info("Start simulator (SITL)")
-            import dronekit_sitl
-            sitl = dronekit_sitl.start_default()
-            connection_string = sitl.connection_string()
-        baud_rate = 57600
-        self.get_logger().info("Connectiong with copter...")
+        connection_string = "/dev/serial0"
+        baud_rate = 921600
+        self.get_logger().info("Connecting with copter...")
         self.vehicle = connect(connection_string, baud=baud_rate, wait_ready=False) #doesnt work with wait_ready=True
         self.state = "OK"
         self.get_logger().info("Copter connected, ready to arm")
@@ -62,9 +50,9 @@ class DroneHandler(Node):
         shoot = 1200
         load =1500
 
-        left = 2000
-        mid = 1400
-        right = 800
+        left = 2100
+        mid = 1500
+        right = 900
 
         self.set_servo(10,stop)
         self.set_servo(11,stop)
@@ -81,10 +69,11 @@ class DroneHandler(Node):
         self.set_servo(11,stop)
         self.set_servo(9,mid)
 
-        self.get_logger().info("Shoot action completed:" + goal_handle.request.side)
+        self.get_logger().info("Shoot action completed:" + goal_handle.request.color)
         goal_handle.succeed()
         result = Shoot.Result()
         return result
+        
     ## INTERNAL HELPER METHODS
     def goto_position_target_local_ned(self, north, east, down=-1):
         if down == -1:
@@ -93,7 +82,7 @@ class DroneHandler(Node):
             0,       # time_boot_ms (not used)
             0, 0,    # target system, target component
             mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
-            0b0000111111111000, # type_mask (only positions enabled)
+            0b0000011111111000, # type_mask (only positions enabled)
             north, east, down, # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
             0, 0, 0, # x, y, z velocity in m/s  (not used)
             0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
@@ -101,15 +90,22 @@ class DroneHandler(Node):
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
-    def goto_position_target_global_int(self, location):
+    def goto_position_target_global_int(self, location, yaw_mode=1):
+        if yaw_mode == 0:   
+        # dont rotate
+            mask = 0b1111011111111000
+        else:
+        # face move direction
+            mask = 0b0000111111111000
+            
         msg = self.vehicle.message_factory.set_position_target_global_int_encode(
         0,       # time_boot_ms (not used)
         0, 0,    # target system, target component
         mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT, # frame
-        0b0000111111111000, # type_mask (only speeds enabled)
-        location.lat*1e7, # lat_int - X Position in WGS84 frame in 1e7 * meters
-        location.lon*1e7, # lon_int - Y Position in WGS84 frame in 1e7 * meters
-        location.alt, # alt - Altitude in meters in AMSL altitude, not WGS84 if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT
+        mask, # type_mask (only speeds enabled)
+        int(location.lat*1e7), # lat_int - X Position in WGS84 frame in 1e7 * meters
+        int(location.lon*1e7), # lon_int - Y Position in WGS84 frame in 1e7 * meters
+        int(location.alt), # alt - Altitude in meters in AMSL altitude, not WGS84 if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT
         0, # X velocity in NED frame in m/s
         0, # Y velocity in NED frame in m/s
         0, # Z velocity in NED frame in m/s
@@ -146,13 +142,13 @@ class DroneHandler(Node):
 
     def set_servo(self, servo_id, pwm):
         msg = self.vehicle.message_factory.command_long_encode(
-            0,          # time_boot_ms (not used)
-            0, 0,       # target system, target component
+            0, 0,          # time_boot_ms (not used)
+            0,   # target system, target component
             mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
             0,          #not used
             servo_id,   #number of servo instance
             pwm,        #pwm value for servo control
-            0,0,0,0,0,) #not used
+            0,0,0,0) #not used
         # send command to vehicle
         self.vehicle.send_mavlink(msg)
 
@@ -165,9 +161,14 @@ class DroneHandler(Node):
     def calculate_remaining_distance_global(self, location):
         dlat = (location.lat - self.vehicle.location.global_relative_frame.lat) * 1.113195e5 ## lat/lon to meters convert magic number
         dlon = (location.lon - self.vehicle.location.global_relative_frame.lon) * 1.113195e5 ## lat/lon to meters convert magic number
-        ddown = location.down - self.vehicle.location.global_relative_frame.down
+        ddown = location.alt - self.vehicle.location.global_relative_frame.alt
         return math.sqrt(dlat*dlat + dlon*dlon + ddown*ddown)
 
+    def get_distance_global(self, aLocation1, aLocation2):
+        coord1 = (aLocation1.lat, aLocation1.lon)
+        coord2 = (aLocation2.lat, aLocation2.lon)
+
+        return hv.haversine(coord1, coord2)*1000 # because we want it in metres
     ## SERVICE CALLBACKS
     def get_attitude_callback(self, request, response):
         temp = self.vehicle.attitude
@@ -242,9 +243,12 @@ class DroneHandler(Node):
     def goto_global_action(self, goal_handle):
         self.get_logger().info(f'-- Goto global action registered. Destination in global frame: --')
 
-        lat = self.vehicle.location.global_relative_frame.lat + goal_handle.request.lat
-        lon = self.vehicle.location.global_relative_frame.lon + goal_handle.request.lon
-        alt = self.vehicle.location.global_relative_frame.alt + goal_handle.request.alt
+        # lat = self.vehicle.location.global_relative_frame.lat + goal_handle.request.lat
+        # lon = self.vehicle.location.global_relative_frame.lon + goal_handle.request.lon
+        # alt = self.vehicle.location.global_relative_frame.alt + goal_handle.request.alt
+        lat = goal_handle.request.lat
+        lon = goal_handle.request.lon
+        alt = goal_handle.request.alt
         destination=LocationGlobalRelative(lat,lon,alt)
 
         self.get_logger().info(f'Latitude: {destination.lat}')
@@ -253,14 +257,15 @@ class DroneHandler(Node):
 
         self.state = "BUSY"
 
-        self.goto_position_target_local_ned(destination.north, destination.east, destination.alt)
+        # self.goto_position_target_local_ned(destination.lat, destination.lon, destination.alt)
+        self.goto_position_target_global_int(destination)
 
         feedback_msg = GotoGlobal.Feedback()
-        feedback_msg.distance = self.calculate_remaining_distance_rel(destination)
+        feedback_msg.distance = self.get_distance_global(self.vehicle.location.global_relative_frame, destination)
         self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
 
         while feedback_msg.distance>0.5:
-            feedback_msg.distance = self.calculate_remaining_distance_global(destination)
+            feedback_msg.distance = self.get_distance_global(self.vehicle.location.global_relative_frame, destination)
             self.get_logger().info(f"Distance remaining: {feedback_msg.distance} m")
             time.sleep(1)
 
@@ -270,6 +275,7 @@ class DroneHandler(Node):
         result.result = 1
 
         return result
+    
     
     def arm_callback(self, goal_handle):
         self.get_logger().info(f'-- Arm action registered --')
@@ -307,7 +313,7 @@ class DroneHandler(Node):
 
         # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
         #  after Vehicle.simple_takeoff will execute immediately).
-        while self.vehicle.location.global_relative_frame.alt >= goal_handle.request.altitude * 0.97:
+        while self.vehicle.location.global_relative_frame.alt <= goal_handle.request.altitude * 0.97:
             feedback_msg.altitude = self.vehicle.location.global_relative_frame.alt
             self.get_logger().info(f"Altitude: {feedback_msg.altitude}")
             time.sleep(1)

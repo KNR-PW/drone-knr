@@ -7,9 +7,13 @@ def generate_launch_description():
             package='drone_hardware',
             executable='drone_handler',
         ),
+        
         Node(
             package='drone_detector',
             executable='detector_server',
+        ),
+        Node(
+            package='drone_autonomy',
+            executable='mission',
         )
-        
     ])

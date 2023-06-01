@@ -14,5 +14,5 @@ def generate_launch_description():
         Node(
             package='drone_gui',
             executable='drone_control_gui',
-        )
+        ),
     ])

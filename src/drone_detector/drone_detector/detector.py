@@ -54,7 +54,7 @@ class Detector(Node):
 
         self.br = CvBridge()
         self.thresholds = {"brown": (np.array([50, 80, 100]), np.array([80, 110, 140])),
-                           "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
+                           "beige": (np.array([60, 0, 0]), np.array([177, 20, 50])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
         # self.detection_msg = Detection()
@@ -78,7 +78,6 @@ class Detector(Node):
         frame = self.br.imgmsg_to_cv2(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-        frame = cv2.blur(frame, (10, 10)) 
 
         # Detection
         for col in self.thresholds:
@@ -88,7 +87,7 @@ class Detector(Node):
             for cnt in contours:
                 # Calculate area and remove small elements
                 area = cv2.contourArea(cnt)
-                if area > 200:
+                if area > 100:
                     x, y, w, h = cv2.boundingRect(cnt)
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col))
 

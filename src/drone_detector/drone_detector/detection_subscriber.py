@@ -37,9 +37,8 @@ class DetectionSubscriber(Node):
         # Convert ROS Image message to OpenCV image
 
         frame = self.br.imgmsg_to_cv2(frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
         self.frame = frame
 
     def detection_callback(self, detections):

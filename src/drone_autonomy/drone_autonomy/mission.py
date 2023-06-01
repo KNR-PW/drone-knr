@@ -68,10 +68,10 @@ class Mission(Node):
         self.get_logger().info("Mission node created")
         self.state = "OK"
         altit = 10
-        self.coordrd = LocationGlobal(lat=-35.3632183,lon=149.1654352,alt=altit)
-        self.coordld = LocationGlobal(lat=-35.3632186,lon=149.1650381,alt=altit)
-        self.coordlu = LocationGlobal(lat=-35.3628949,lon=149.165038,alt=altit)
-        self.coordru = LocationGlobal(lat=-35.3628948,lon=149.165435,alt=altit)
+        self.coordru = LocationGlobal(lat=50.284627,lon=18.977156,alt=altit)
+        self.coordlu = LocationGlobal(lat=50.284973,lon=18.977035,alt=altit)
+        self.coordld = LocationGlobal(lat=50.284797,lon=18.976398,alt=altit)
+        self.coordrd = LocationGlobal(lat=50.284516,lon=18.976561,alt=altit)
         self.local_coordru = 0
         self.local_coordrd = 0
         self.local_coordld = 0
@@ -79,7 +79,7 @@ class Mission(Node):
         self.current_yaw = 0
         self.length = 0 
         self.width = 0
-        self.scan_altitude = float(5)
+        self.scan_altitude = float(10)
         self.shoot_altitude = 5.0
         self.balls_dict = {"golden": "yellow", "beige": "orange"}
         self.circles_counter = 0
@@ -153,13 +153,13 @@ class Mission(Node):
         for det in det_list:
             self.circles_counter += 1
             if det.color_name != "brown":
-                # if not is_alt_changed:
-                #     # self.get_logger().info("Going to shoot altitude")
-                #     # self.change_altitude(self.shoot_altitude)
-                #     rel_altitude = self.shoot_altitude
-                #     is_alt_changed = True
-                # else:
-                #     rel_altitude = 0.0
+                if not is_alt_changed:
+                    # self.get_logger().info("Going to shoot altitude")
+                    # self.change_altitude(self.shoot_altitude)
+                    rel_altitude = self.shoot_altitude
+                    is_alt_changed = True
+                else:
+                    rel_altitude = 0.0
                 self.get_logger().info("Going to next det")
                 # self.send_set_yaw(self.current_yaw)
                 # time.sleep(3)
@@ -181,9 +181,9 @@ class Mission(Node):
                 self.last_move[1] = gps_position[1]
             else:
                 self.get_logger().info("Brown detected, not moving")
-        # if is_alt_changed:
-        #     self.get_logger().info("Going to scan altitude")
-        #     self.change_altitude(-self.shoot_altitude)
+        if is_alt_changed:
+            self.get_logger().info("Going to scan altitude")
+            self.change_altitude(-self.shoot_altitude)
         return 1
 
     def get_gps(self):
@@ -315,8 +315,9 @@ class Mission(Node):
         for det in det_list:
             if not self.is_det_used(det, gps):
                 i += 1
-                det_list_filtered.append(det)
-                self.used_detections.append([det.gps_position[0]+gps[0], det.gps_position[1]+gps[1]])
+                if i < 3:
+                    det_list_filtered.append(det)
+                    self.used_detections.append([det.gps_position[0]+gps[0], det.gps_position[1]+gps[1]])
         self.get_logger().info(f"Detections not used: {i}")
         self.goto_det_group(det_list_filtered) 
 
@@ -501,15 +502,15 @@ class Mission(Node):
 def main(args=None):
     rclpy.init(args=args)
     # start = time.time()
-    # mission = Mission()
-    # mission.arm_and_takeoff()
-    # mission.scan_area()
-    # mission.photos_tour()
-    # mission.rtl_and_land()
-    mission.send_shoot_goal("yellow")
+    mission = Mission()
+    mission.arm_and_takeoff()
+    mission.scan_area()
+    mission.photos_tour()
+    mission.rtl_and_land()
 
-    end = time.time()
-    mission.get_logger().info(f"Time taken (min): {(end-start)/60}")
+
+    # end = time.time()
+    # mission.get_logger().info(f"Time taken (min): {(end-start)/60}")
     mission.destroy_node()
 
     rclpy.shutdown()

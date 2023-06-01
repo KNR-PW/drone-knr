@@ -1,6 +1,8 @@
 from setuptools import setup
-import os
 from glob import glob
+import os
+from distutils.core import setup
+from catkin_pkg.python_setup import generate_distutils_setup
 
 package_name = 'drone_bringup'
 
