@@ -507,8 +507,6 @@ def main(args=None):
     # mission.photos_tour()
     # mission.rtl_and_land()
     while True:
-        mission.send_shoot_goal("orange")
-        mission.wait_busy()
         time.sleep(3)
         mission.send_shoot_goal("yellow")
         mission.wait_busy()
