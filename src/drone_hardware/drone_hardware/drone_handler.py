@@ -134,7 +134,7 @@ class DroneHandler(Node):
         self.vehicle.send_mavlink(msg)
 
     def set_servo(self, servo_id, pwm):
-        msg = vehicle.message_factory.command_long_encode(
+        msg = self.vehicle.message_factory.command_long_encode(
             0,          # time_boot_ms (not used)
             0,   # target system, target component
             mavutil.mavlink.MAV_CMD_DO_SET_SERVO, #command
