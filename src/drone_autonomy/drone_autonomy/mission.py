@@ -503,7 +503,7 @@ def main(args=None):
     rclpy.init(args=args)
     # start = time.time()
     mission = Mission()
-    mission.arm_and_takeoff()
+    # mission.arm_and_takeoff()
     mission.scan_area()
     mission.photos_tour()
     mission.rtl_and_land()
