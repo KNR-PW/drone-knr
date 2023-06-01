@@ -46,6 +46,7 @@ class DroneHandler(Node):
         self.vehicle.mode=VehicleMode("RTL")
 
     def shoot_callback(self, goal_handle):
+        self.get_logger().info(f"Incoming shoot goal for color: {goal_handle.request.color}")
         stop = 1000
         shoot = 1200
         load =1500
@@ -69,7 +70,7 @@ class DroneHandler(Node):
         self.set_servo(11,stop)
         self.set_servo(9,mid)
 
-        self.get_logger().info("Shoot action completed:" + goal_handle.request.side)
+        self.get_logger().info("Shoot action completed:" + goal_handle.request.color)
         goal_handle.succeed()
         result = Shoot.Result()
         return result
