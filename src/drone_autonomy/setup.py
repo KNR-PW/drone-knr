@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             "goto_detection_client=drone_autonomy.goto_detection_client:main",
-            "goto_detection_group=drone_autonomy.goto_detection_group:main"
+            "goto_detection_group=drone_autonomy.goto_detection_group:main",
+            "mission=drone_autonomy.mission:main",
         ],
     },
 )
