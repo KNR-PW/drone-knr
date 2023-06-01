@@ -143,7 +143,7 @@ class DroneHandler(Node):
             pwm,        #pwm value for servo control
             0,0,0,0,0) #not used
         # send command to vehicle
-        vehicle.send_mavlink(msg)
+        self.vehicle.send_mavlink(msg)
 
     def calculate_remaining_distance_rel(self, location):
         dnorth = location.north - self.vehicle.location.local_frame.north
