@@ -501,7 +501,7 @@ class Mission(Node):
 def main(args=None):
     rclpy.init(args=args)
     # start = time.time()
-    # mission = Mission()
+    mission = Mission()
     # mission.arm_and_takeoff()
     # mission.scan_area()
     # mission.photos_tour()
