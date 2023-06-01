@@ -110,7 +110,7 @@ class Ui_MainWindow(object):
     def image_callback(self, img):
         print("image callback")
         frame = self.br.imgmsg_to_cv2(img)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         self.got_frame = True
         self.frame = frame.astype(np.uint8)
