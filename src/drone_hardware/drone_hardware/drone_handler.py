@@ -9,7 +9,7 @@ import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
 
-from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw, SetMode
+from drone_interfaces.srv import GetAttitude, GetLocationRelative, SetServo, SetYaw, SetMode, GetLocationGlobal
 from drone_interfaces.action import GotoRelative, GotoGlobal, Arm, Takeoff, Shoot
 
 import haversine as hv
@@ -20,6 +20,7 @@ class DroneHandler(Node):
         ## DECLARE SERVICES
         self.attitude = self.create_service(GetAttitude, 'get_attitude', self.get_attitude_callback)
         self.gps = self.create_service(GetLocationRelative, 'get_location_relative', self.get_location_relative_callback)
+        self.gps_global = self.create_service(GetLocationGlobal, 'get_location_global', self.get_location_global_callback)
         self.servo = self.create_service(SetServo, 'set_servo', self.set_servo_callback)
         self.yaw = self.create_service(SetYaw, 'set_yaw', self.set_yaw_callback)
         self.mode = self.create_service(SetMode, 'set_mode',self.set_mode_callback)
@@ -206,6 +207,18 @@ class DroneHandler(Node):
         # self.get_logger().info(f"Down: {response.down}")
         return response
     
+
+    def get_location_global_callback(self, request, response):
+        temp = self.vehicle.location.global_frame
+        response.lat = temp.lat or 0.0
+        response.lon = temp.lon or 0.0
+        response.alt = temp.alt or 0.0
+        # self.get_logger().info(f"-- Get location relative service called --")
+        # self.get_logger().info(f"North: {response.north}")
+        # self.get_logger().info(f"East: {response.east}")
+        # self.get_logger().info(f"Down: {response.down}")
+        return response
+    
     def set_yaw_callback(self, request, response):
         self.set_yaw(request.yaw)
         response = SetYaw.Response()
@@ -339,11 +352,7 @@ class DroneHandler(Node):
         result.result = 1
 
         return result
-
-    def publish_gps_pos(self):
-        gps_msg = GPSPos()
-        GPSPos.gps_position = vehicle.location.local_frame
-        self.gps_publisher.piblish(GPSPos)
+    
 
 def main():
     rclpy.init()
