@@ -1,4 +1,9 @@
-import { Component, For, Show, createResource } from "solid-js";
+import { AppBar, Avatar, Card, Chip, CircularProgress, Container, Grid, List, ListItem, ListItemAvatar, ListItemButton, ListItemIcon, ListItemText, Paper, Slide, Stack, Toolbar, Typography, useTheme } from "@suid/material";
+import logo from './logo.png';
+import { Component, For, Resource, Show, createResource } from "solid-js";
+import createElementRef from "@suid/system/createElementRef";
+import { Key } from "@solid-primitives/keyed";
+import { ContainerClasses } from "@suid/material/Container";
 
 
 type Detection = {
@@ -19,7 +24,7 @@ type Tree = {
 // testing delays
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-const URL = 'http://drone.bimbur.art/api';
+const URL = 'http://drone.bimbur.art/api/';
 const fetchData = async () => {
   const queryDate = new Date();
   const resp = await fetch(URL);
@@ -34,24 +39,29 @@ const fetchData = async () => {
 
 
 interface EventProps {
-  detection: Detection
+  detection: Detection,
 }
+
 
 const Event = (props: EventProps) => {
   const det = props.detection;
-  return ( 
-    <div>
-      <p>Lattitude: {det.lat}</p>
-      <p>Longitude: {det.lon}</p>
-      <p>{det.date + ''}</p>
-      <p>{det.photo}</p>
-      <img src={URL + '/upload/' + det.photo} />
-      <p>Red trees: {det.trees.filter(t => t.color == 'R').length}, Blue trees: {det.trees.filter(t => t.color == 'B').length}</p>
-    </div>
-  );
+  return (<>
+    <Paper sx={{ margin: 1, padding: 1, display: 'flex' }}>
+      <Avatar src={URL + 'upload/' + det.photo} sx={{ width: 120, height: 120, marginRight: 2 }} />
+      <Grid container spacing={2} sx={{ flexGrow: 1 }}>
+        <Grid item><Chip variant="outlined" label={'Lattitude: ' + det.lat} /></Grid>
+        <Grid item><Chip variant="outlined" label={'Longitude: ' + det.lon} /></Grid>
+        <Grid item><Chip variant="outlined" label={det.date + ''} /></Grid>
+        <Grid item><Chip variant="outlined" label={'Red: ' + det.trees.filter(t => t.color == 'R').length} /></Grid>
+        <Grid item><Chip variant="outlined" label={'Blue: ' + det.trees.filter(t => t.color == 'B').length} /></Grid>
+      </Grid>    
+    </Paper>
+  </>);
 }
 
+
 export const Events: Component = () => {
+  const element = createElementRef();
   const [data, { mutate, refetch }] = createResource(fetchData);
 
   setInterval(() => {
@@ -66,9 +76,27 @@ export const Events: Component = () => {
   }, 1000);
   
   return (
-    <Show when={data.latest} fallback={<div>Loading...</div>}>
-      <div>Date: {data.latest!.queryDate + ''}</div>
-      <For each={data.latest!.detections}>{det => <Event detection={det} />}</For>
+    <>
+      <AppBar position="static">
+      <Toolbar>
+        <Avatar src={logo} sx={{ mr: 2}} />
+        <Show when={data.latest}>{d =>
+<Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>{'Last update: ' + d().queryDate + ''}
+        </Typography>}
+        </Show>
+      </Toolbar>
+    </AppBar>
+    <Show when={data.latest} fallback={<CircularProgress />}>
+      <Container maxWidth="lg" ref={element}>
+        <Stack>
+          <Key each={data.latest!.detections} by={item => item.detection_id}>{det => 
+            <Slide direction="left" in={true} container={element.ref}>
+              <Event detection={det()} />
+            </Slide>
+          }</Key>
+        </Stack>
+      </Container>
     </Show>
+  </>
   );
 }
