@@ -389,7 +389,7 @@ class DetectorServer(Node):
             for cnt in contours:
                 # Calculate area and remove small elements
                 area = cv2.contourArea(cnt)
-                if area > 200:
+                if area > 500:
                     x, y, w, h = cv2.boundingRect(cnt)
                     pos = self.det2pos((x, y, w, h))
                     rel_pos = (self.x+pos[0], self.y+pos[1])
