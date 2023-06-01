@@ -260,6 +260,9 @@ class Detection:
     def get_gps_pos(self):
         return self.gps_pos
 
+    def get_bounding_box(self):
+        return self.bounding_box
+
     def get_color(self):
         return self.color
 
