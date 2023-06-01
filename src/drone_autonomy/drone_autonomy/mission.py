@@ -506,7 +506,12 @@ def main(args=None):
     # mission.scan_area()
     # mission.photos_tour()
     # mission.rtl_and_land()
-    mission.send_shoot_goal("yellow")
+    while True:
+        Mission.send_shoot_goal("orange")
+        Mission.wait_busy()
+        time.sleep(3)
+        Mission.send_shoot_goal("yellow")
+        Mission.wait_busy()
 
     end = time.time()
     mission.get_logger().info(f"Time taken (min): {(end-start)/60}")
