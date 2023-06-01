@@ -38,8 +38,10 @@ class ImagePublisher(Node):
         # Create a VideoCapture object
         # The argument '0' gets the default webcam.
         
-        # self.cap = cv2.VideoCapture("/home/stas/Dron/drone-knr/drone_photos/drone_photo0420.jpg")
-        self.img = cv2.imread("/home/stas/Dron/drone_photos/drone_photo0395.jpg")
+        self.cap = cv2.VideoCapture("/home/stas/Dron/drone-knr/drone_photos/drone_photo0420.jpg")
+
+
+        # self.img = cv2.imread("/home/stas/Dron/drone_photos/drone_photo0395.jpg")
 
         # Used to convert between ROS and OpenCV images
         self.br = CvBridge()
@@ -53,24 +55,27 @@ class ImagePublisher(Node):
         # Capture frame-by-frame
         # This method returns True/False as well
         # as the video frame.
-        # ret, frame = self.cap.read()
+        ret, frame = self.cap.read()
 
-        # if ret == True:
-        #     # Publish the image.
-        #     # The 'cv2_to_imgmsg' method converts an OpenCV
-        #     # image to a ROS 2 image message
-        #     frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
-        #     self.publisher_.publish(self.br.cv2_to_imgmsg(frame))
+        if ret == True:
+            # Publish the image.
+            # The 'cv2_to_imgmsg' method converts an OpenCV
+            # image to a ROS 2 image message
+            frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        #     # Display the message on the console
-        #     self.get_logger().info('Publishing video frame')
-        # else:
-        #     self.cap.release()
-        #     self.cap = cv2.VideoCapture(0)
+            self.publisher_.publish(self.br.cv2_to_imgmsg(frame))
 
-        frame = cv2.resize(self.img, (640, 480), interpolation=cv2.INTER_LINEAR)
-        frame = cv2.blur(frame, (15, 15)) 
-        self.publisher_.publish(self.br.cv2_to_imgmsg(frame))
+            # Display the message on the console
+            self.get_logger().info('Publishing video frame')
+        else:
+            self.cap.release()
+            self.cap = cv2.VideoCapture(0)
+
+        # frame = cv2.resize(self.img, (640, 480), interpolation=cv2.INTER_LINEAR)
+
+        # # frame = cv2.blur(frame, (15, 15)) 
+        # self.publisher_.publish(self.br.cv2_to_imgmsg(frame))
 
 
 def main(args=None):
