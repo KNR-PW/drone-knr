@@ -315,7 +315,7 @@ class DetectorServer(Node):
             frame = cv2.blur(frame, (15, 15)) 
     
             frame = cv2.resize(frame, self.pub_img_size, interpolation=cv2.INTER_LINEAR)
-            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
 
 
