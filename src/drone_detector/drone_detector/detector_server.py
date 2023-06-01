@@ -309,7 +309,7 @@ class DetectorServer(Node):
     def timer_callback(self):
         ret, frame = self.video_capture.read()
         if ret:
-            frame = cv2.blur(frame, (10, 10)) 
+            frame = cv2.blur(frame, (30, 30)) 
     
             frame = cv2.resize(frame, self.pub_img_size, interpolation=cv2.INTER_LINEAR)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -341,7 +341,7 @@ class DetectorServer(Node):
         ret, frame = self.video_capture.read()
         if ret:
             # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.blur(frame, (10, 10)) 
+            frame = cv2.blur(frame, (30, 30)) 
             self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
             self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
 
