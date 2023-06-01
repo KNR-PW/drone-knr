@@ -12,8 +12,8 @@ payload = {
     'lon': random.uniform(-180, 180), 
     'trees': [random_tree() for i in range(random.randrange(0, 3))]    
 }
-files = { 'photo': open('test.png', 'rb') }
+files = { 'photo': open('slonecznik.jpg', 'rb') }
 
-r = requests.post('http://drone.bimbur.art/api', data=payload, files=files)
+r = requests.post('http://drone.bimbur.art/api/', data=payload, files=files)
 
 print(r.text)
