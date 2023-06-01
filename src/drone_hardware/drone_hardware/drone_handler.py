@@ -51,8 +51,8 @@ class DroneHandler(Node):
         load =1500
 
         left = 2100
-        mid = 1400
-        right = 800
+        mid = 1500
+        right = 900
 
         self.set_servo(10,stop)
         self.set_servo(11,stop)
