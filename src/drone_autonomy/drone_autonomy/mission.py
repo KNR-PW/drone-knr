@@ -500,12 +500,13 @@ class Mission(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    start = time.time()
-    mission = Mission()
-    mission.arm_and_takeoff()
-    mission.scan_area()
-    mission.photos_tour()
-    mission.rtl_and_land()
+    # start = time.time()
+    # mission = Mission()
+    # mission.arm_and_takeoff()
+    # mission.scan_area()
+    # mission.photos_tour()
+    # mission.rtl_and_land()
+    mission.send_shoot_goal("yellow")
 
     end = time.time()
     mission.get_logger().info(f"Time taken (min): {(end-start)/60}")
