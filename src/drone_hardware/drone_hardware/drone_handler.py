@@ -50,7 +50,7 @@ class DroneHandler(Node):
         shoot = 1200
         load =1500
 
-        left = 2000
+        left = 2100
         mid = 1400
         right = 800
 
