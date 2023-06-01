@@ -309,10 +309,10 @@ class DetectorServer(Node):
     def timer_callback(self):
         ret, frame = self.video_capture.read()
         if ret:
-            frame = cv2.blur(frame, (30, 30)) 
+            frame = cv2.blur(frame, (15, 15)) 
     
             frame = cv2.resize(frame, self.pub_img_size, interpolation=cv2.INTER_LINEAR)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
 
 
@@ -341,9 +341,9 @@ class DetectorServer(Node):
         ret, frame = self.video_capture.read()
         if ret:
             # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.blur(frame, (30, 30)) 
+            frame = cv2.blur(frame, (15, 15)) 
             self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
-            self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+            # self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
 
         else:
             self.get_logger().info('Reading frame failed:(')
@@ -393,10 +393,6 @@ class DetectorServer(Node):
                     self.get_logger().info(f"Detection pos: {pos}")
                     self.detections.append(Detection(bounding_box=(x, y, w, h), color=col, gps_pos=pos, rel_gps=rel_pos))
 
-    def read_frame(self):
-        ret, frame = self.video_capture.read()
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
 
     def detections_to_msg(self):
         temp_detection_list_msg = DetectionsList()
