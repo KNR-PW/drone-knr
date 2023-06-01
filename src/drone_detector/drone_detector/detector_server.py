@@ -288,7 +288,7 @@ class DetectorServer(Node):
                            "beige": (np.array([0, 0, 140]), np.array([100, 100, 255])),
                            "golden": (np.array([0, 0, 140]), np.array([100, 100, 255]))}
         self.detections = []
-        self.img_size = (640, 480)
+        self.img_size = (1920, 1080)
         self.pub_img_size = (640, 480)
         self.series_counter = 0
         self.photos_path = "/home/raspberrypi/Drone/drone_photos/"
@@ -310,7 +310,9 @@ class DetectorServer(Node):
         ret, frame = self.video_capture.read()
         if ret:
             frame = cv2.blur(frame, (10, 10)) 
+    
             frame = cv2.resize(frame, self.pub_img_size, interpolation=cv2.INTER_LINEAR)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
 
 
@@ -341,6 +343,8 @@ class DetectorServer(Node):
             # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.blur(frame, (10, 10)) 
             self.frame = cv2.resize(frame, self.img_size, interpolation=cv2.INTER_AREA)
+            self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+
         else:
             self.get_logger().info('Reading frame failed:(')
 
