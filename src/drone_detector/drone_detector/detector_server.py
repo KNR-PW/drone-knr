@@ -278,8 +278,8 @@ class DetectorServer(Node):
                                                                 "detector_thresholds",
                                                                 self.thresholds_callback,
                                                                 10)
-        # self.frames_pub = self.create_publisher(Image, "/camera", 10)
-        # self.timer = self.create_timer(0.5, self.timer_callback)
+        self.frames_pub = self.create_publisher(Image, "/camera", 10)
+        self.timer = self.create_timer(0.5, self.timer_callback)
 
         self.gps_cli = self.create_client(GetLocationRelative, 'get_location_relative')
         while not self.gps_cli.wait_for_service(timeout_sec=1.0):
@@ -308,14 +308,16 @@ class DetectorServer(Node):
         self.frames_pub = self.create_publisher(Image, "/camera", 10)
         self.get_logger().info('DetectorServer node created')
 
-    # def timer_callback(self):
-    #     ret, frame = self.video_capture.read()
-    #     if ret:
-    #         frame = cv2.blur(frame, (15, 15)) 
+    def timer_callback(self):
+        ret, frame = self.video_capture.read()
+        if ret:
+            frame = cv2.blur(frame, (15, 15)) 
     
-    #         frame = cv2.resize(frame, self.pub_img_size, interpolation=cv2.INTER_LINEAR)
-    #         # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    #         self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
+            frame = cv2.resize(frame, self.pub_img_size, interpolation=cv2.INTER_LINEAR)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self.frames_pub.publish(self.br.cv2_to_imgmsg(frame))
 
 
     def take_photo_callback(self, request, response):
@@ -341,6 +343,8 @@ class DetectorServer(Node):
     def read_frame(self):
         self.get_logger().info('Reading frame')
         ret, frame = self.video_capture.read()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        
         if ret:
             # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.blur(frame, (15, 15)) 
